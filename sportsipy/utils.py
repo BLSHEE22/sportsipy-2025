@@ -4,6 +4,15 @@ from datetime import datetime
 from lxml.etree import ParserError, XMLSyntaxError
 from pyquery import PyQuery as pq
 
+# maps field to its .items() index
+field_map = {'height':0, 'weight':1, 'birth_date':2, 'position':2, 'nationality':4}
+
+# helper method for identifying 'full name' data from the HTML
+def starts_and_ends_with(s, start, end):
+    if s == "":
+        return False
+    else:
+        return s[0] == start and s[-1] == end
 
 # {
 #   league name: {
@@ -213,6 +222,8 @@ def _parse_field(parsing_scheme, html_data, field, index=0, strip=False,
     # return None and have the be the value.
     if len(items) == 0:
         return None
+    if field == 'games_played':
+        items[index] = items[index].split('\n')[-1]
     # Default to returning the first element. Optionally return another element
     # if multiple fields have the same tag attribute.
     try:

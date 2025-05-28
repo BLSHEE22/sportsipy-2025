@@ -7,7 +7,17 @@ from urllib.error import HTTPError
 from .. import utils
 from .constants import PLAYER_SCHEME, PLAYER_URL, ROSTER_URL, DETAILED_STATS
 from .player import AbstractPlayer
+from time import sleep
 
+# maps field to its .items() index
+field_map = {'height':0, 'weight':1, 'birth_date':2, 'position':2}
+
+# helper method for identifying 'full name' data from the HTML
+def starts_and_ends_with(s, start, end):
+    if s == "":
+        return False
+    else:
+        return s[0] == start and s[-1] == end
 
 def _cleanup(prop):
     try:
@@ -91,6 +101,7 @@ class Player(AbstractPlayer):
         self._season = None
         self._name = None
         self._team_abbreviation = None
+        self._team_history = None
         self._position = None
         self._height = None
         self._weight = None
@@ -224,9 +235,11 @@ class Player(AbstractPlayer):
         self._safeties = None
 
         player_data = self._pull_player_data()
+        print(f"Pulled data for {self._name}!")
         if not player_data:
             return
         self._find_initial_index()
+        sleep(3)
         AbstractPlayer.__init__(self, player_id, self._name, player_data)
 
     def __str__(self):
@@ -410,6 +423,36 @@ class Player(AbstractPlayer):
                                                         all_stats_dict,
                                                         'detailed' in table_id)
         return all_stats_dict
+    
+    def _parse_team(self, player_info):
+        """
+        Parse the current team the player is playing for.
+
+        Pull the player's current team from the player information and set the
+        'team_abbreivation' attribute with the value prior to returning.
+
+        Parameters
+        ----------
+        player_info : PyQuery object
+            A PyQuery object containing the HTML from the player's stats page.
+        """
+        value = [item.text() for item in player_info('#meta div a').items()]
+        setattr(self, '_team_abbreviation', value)
+    
+    def _parse_team_history(self, player_info):
+        """
+        Parse the set of all teams the player has played for.
+
+        Pull the player's team history from the player information and set the
+        'team_history' attribute with the value prior to returning.
+
+        Parameters
+        ----------
+        player_info : PyQuery object
+            A PyQuery object containing the HTML from the player's stats page.
+        """
+        value = set(team for team in set(item.text() for item in player_info('td[data-stat="team_name_abbr"]').items()) if all(char.isupper() for char in team) and team != "")
+        setattr(self, '_team_history', value)
 
     def _parse_player_information(self, player_info):
         """
@@ -424,10 +467,44 @@ class Player(AbstractPlayer):
         player_info : PyQuery object
             A PyQuery object containing the HTML from the player's stats page.
         """
+
         for field in ['_height', '_weight', '_name']:
             short_field = str(field)[1:]
-            value = utils._parse_field(PLAYER_SCHEME, player_info, short_field)
+            value = player_info("h1").text()
+            if short_field != 'name':
+                result_list = [obj for obj in [item.text() for item in player_info("#meta div p span").items()]]
+                if result_list:
+                    if '-' not in result_list[0]:
+                        result_list = result_list[1:]
+                value = result_list[field_map[short_field]]
             setattr(self, field, value)
+
+    def _parse_position(self, player_info):
+        """
+        Parse the player's position.
+
+        Pull the player's position from the player information and set the
+        'position' attribute with the value prior to returning.
+
+        Parameters
+        ----------
+        player_info : PyQuery object
+            A PyQuery object containing the HTML from the player's stats page.
+        """
+        meta_text = "".join([item.text() for item in player_info("#meta div p").items()])
+        if 'Position: ' in meta_text:
+            pos_index = meta_text.index('Position: ')
+            pos_text = meta_text[pos_index:]
+            numeric_indices = []
+            for ft in ['Throws:', '5', '6', '7']:
+                first_num_index = pos_text.find(ft)
+                if first_num_index > 0:
+                    numeric_indices.append(first_num_index)
+            numeric_index = min(numeric_indices)
+            value = pos_text[10:numeric_index]
+        else:
+            value = 'Unknown'
+        setattr(self, '_position', value)
 
     def _parse_birth_date(self, player_info):
         """
@@ -441,8 +518,8 @@ class Player(AbstractPlayer):
         player_info : PyQuery object
             A PyQuery object containing the HTML from the player's stats page.
         """
-        birth_date = player_info('span#necro-birth').attr('data-birth')
-        setattr(self, '_birth_date', birth_date)
+        date = player_info('#necro-birth').attr('data-birth')
+        setattr(self, '_birth_date', date)
 
     def _pull_player_data(self):
         """
@@ -465,7 +542,10 @@ class Player(AbstractPlayer):
             return
         all_stats = self._combine_all_stats(player_info)
         self._parse_player_information(player_info)
+        self._parse_position(player_info)
         self._parse_birth_date(player_info)
+        self._parse_team(player_info)
+        self._parse_team_history(player_info)
         setattr(self, '_season', list(all_stats.keys()))
         return all_stats
 
@@ -664,6 +744,7 @@ class Player(AbstractPlayer):
             'season': self.season,
             'tackles': self.tackles,
             'team_abbreviation': self.team_abbreviation,
+            'team_history': self.team_history,
             'thirty_to_thirty_nine_yard_field_goal_attempts':
             self.thirty_to_thirty_nine_yard_field_goal_attempts,
             'thirty_to_thirty_nine_yard_field_goals_made':
@@ -727,14 +808,24 @@ class Player(AbstractPlayer):
         Returns a ``string`` of the team's abbreviation, such as 'NOR' for the
         New Orleans Saints.
         """
-        return self._team_abbreviation[self._index]
+        if self._team_abbreviation:
+            return self._team_abbreviation[0]
+        else:
+            return None
+    
+    @property
+    def team_history(self):
+        """
+        Returns a ``Set`` of all teams played for by the player, such as {SAC, BOS} for Neemias Queta.
+        """
+        return self._team_history
 
     @property
     def position(self):
         """
         Returns a ``string`` of the player's primary position.
         """
-        return self._position[self._index]
+        return self._position
 
     @property
     def height(self):

@@ -1,5 +1,6 @@
 import pandas as pd
 import re
+import sqlite3
 from datetime import datetime
 from functools import wraps
 from lxml.etree import ParserError, XMLSyntaxError
@@ -8,7 +9,21 @@ from urllib.error import HTTPError
 from .. import utils
 from .constants import NATIONALITY, PLAYER_SCHEME, PLAYER_URL, ROSTER_URL
 from .player import AbstractPlayer
+from time import sleep
 
+# local database template
+csv_data = [['Sport', 'Team', 'Name', 'PlayerId', 'Height', 'Weight', 'Position', 'Birthdate', 
+             'Nationality', 'TeamHistory', 'GamesPlayed']]
+
+# maps field to its .items() index
+field_map = {'height':0, 'weight':1, 'birth_date':2, 'position':2}
+
+# helper method for identifying 'full name' data from the HTML
+def starts_and_ends_with(s, start, end):
+    if s == "":
+        return False
+    else:
+        return s[0] == start and s[-1] == end
 
 def _cleanup(prop):
     try:
@@ -112,6 +127,7 @@ class Player(AbstractPlayer):
         self._season = None
         self._name = None
         self._team_abbreviation = None
+        self._team_history = None
         self._position = None
         self._height = None
         self._weight = None
@@ -186,10 +202,13 @@ class Player(AbstractPlayer):
         self._points_per_poss = None
 
         player_data = self._pull_player_data()
+        print(f"Pulled player data for {self._name}! Sleeping for 3 seconds...")
         AbstractPlayer.__init__(self, player_id, self._name, player_data)
         if not player_data:
             return
         self._find_initial_index()
+        sleep(3)
+        #print("Done sleeping. Searching for next player on roster...")
 
     def __str__(self):
         """
@@ -355,12 +374,13 @@ class Player(AbstractPlayer):
         player_info : PyQuery object
             A PyQuery object containing the HTML from the player's stats page.
         """
-        for span in player_info('span').items():
-            if 'class="f-i' in str(span):
-                nationality = span.text()
-                nationality = NATIONALITY[nationality]
-                setattr(self, '_nationality', nationality)
-                break
+        player_information = [obj for obj in [item.text() for item in player_info("#meta div p span").items()] if not starts_and_ends_with(obj, '(', ')')]
+        player_country_info = [s for s in player_information if len(s) == 2]
+        if player_country_info:
+            nationality = NATIONALITY[player_country_info[0]]
+        else:
+            nationality = None
+        setattr(self, '_nationality', nationality)
 
     def _parse_player_information(self, player_info):
         """
@@ -377,8 +397,66 @@ class Player(AbstractPlayer):
         """
         for field in ['_height', '_weight', '_name']:
             short_field = str(field)[1:]
-            value = utils._parse_field(PLAYER_SCHEME, player_info, short_field)
+            value = player_info("h1").text()
+            if short_field != 'name':
+                player_information = [obj for obj in [item.text() for item in player_info("#meta div p span").items()] if not starts_and_ends_with(obj, '(', ')')]
+                value = player_information[field_map[short_field]]
+                if short_field == 'weight':
+                    player_weight_info = [s for s in player_information if 'lb' in s]
+                    if player_weight_info:
+                        value = player_weight_info
+                    else:
+                        value = 0
             setattr(self, field, value)
+    
+    def _parse_position(self, player_info):
+        """
+        Parse the player's position.
+
+        Pull the player's position from the player information and set the
+        'position' attribute with the value prior to returning.
+
+        Parameters
+        ----------
+        player_info : PyQuery object
+            A PyQuery object containing the HTML from the player's stats page.
+        """
+        meta_text = "".join([item.text() for item in player_info("#meta div p").items()])
+        pos_index = meta_text.index('Position: ')
+        pos_text = meta_text[pos_index:]
+        dot_index = pos_text.index('▪')
+        value = pos_text[10:dot_index-1]
+        setattr(self, '_position', value)
+
+    def _parse_team(self, player_info):
+        """
+        Parse the current team the player is playing for.
+
+        Pull the player's current team from the player information and set the
+        'team_abbreivation' attribute with the value prior to returning.
+
+        Parameters
+        ----------
+        player_info : PyQuery object
+            A PyQuery object containing the HTML from the player's stats page.
+        """
+        value = [item.text() for item in player_info('#meta div a').items()]
+        setattr(self, '_team_abbreviation', value)
+
+    def _parse_team_history(self, player_info):
+        """
+        Parse the set of all teams the player has played for.
+
+        Pull the player's team history from the player information and set the
+        'team_history' attribute with the value prior to returning.
+
+        Parameters
+        ----------
+        player_info : PyQuery object
+            A PyQuery object containing the HTML from the player's stats page.
+        """
+        value = set(team for team in set(item.text() for item in player_info('#per_game_stats td[data-stat="team_name_abbr"]').items()) if all(char.isupper() for char in team))
+        setattr(self, '_team_history', value)
 
     def _parse_birth_date(self, player_info):
         """
@@ -392,8 +470,24 @@ class Player(AbstractPlayer):
         player_info : PyQuery object
             A PyQuery object containing the HTML from the player's stats page.
         """
-        date = player_info('span[itemprop="birthDate"]').attr('data-birth')
+        date = player_info('#necro-birth').attr('data-birth')
         setattr(self, '_birth_date', date)
+
+    def _parse_games_played(self, player_info):
+        """
+        Parse the number of games the player has played in.
+
+        Pull the player's current team from the player information and set the
+        'games_played' attribute with the value prior to returning.
+
+        Parameters
+        ----------
+        player_info : PyQuery object
+            A PyQuery object containing the HTML from the player's stats page.
+        """
+        value = utils._parse_field(PLAYER_SCHEME, player_info, 'games_played')
+        # [item.text() for item in player_info('#meta div a').items()][0]
+        setattr(self, '_games_played', value)
 
     def _parse_contract_headers(self, table):
         """
@@ -519,9 +613,13 @@ class Player(AbstractPlayer):
         if not player_info:
             return
         self._parse_player_information(player_info)
+        self._parse_position(player_info)
+        self._parse_games_played(player_info)
         self._parse_nationality(player_info)
         self._parse_birth_date(player_info)
         self._parse_contract(player_info)
+        self._parse_team(player_info)
+        self._parse_team_history(player_info)
         all_stats = self._combine_all_stats(player_info)
         setattr(self, '_season', all_stats.keys())
         return all_stats
@@ -680,6 +778,7 @@ class Player(AbstractPlayer):
             'steals_per_poss': self.steals_per_poss,
             'take_fouls': self.take_fouls,
             'team_abbreviation': self.team_abbreviation,
+            'team_history': self.team_history,
             'three_point_attempt_rate': self.three_point_attempt_rate,
             'three_point_attempts': self.three_point_attempts,
             'three_point_attempts_per_poss':
@@ -738,17 +837,30 @@ class Player(AbstractPlayer):
         '2017-18'. If no season was requested, the career stats will be
         returned for the player and the season will default to 'Career'.
         """
-        return self._season[self._index]
+        if self._index:
+            return self._season[self._index]
+        else:
+            return None
 
     @property
     def team_abbreviation(self):
         """
         Returns a ``string`` of the abbrevation for the team the player plays
-        for, such as 'HOU' for James Harden.
+        for, such as 'LAC' for James Harden.
         """
-        return self._team_abbreviation[self._index]
+        if self._index:
+            return self._team_abbreviation[self._index]
+        else:
+            return None
+    
+    @property
+    def team_history(self):
+        """
+        Returns a ``Set`` of all teams played for by the player, such as {SAC, BOS} for Neemias Queta.
+        """
+        return self._team_history
 
-    @_most_recent_decorator
+    @property
     def position(self):
         """
         Returns a ``string`` constant of the player's primary position.
@@ -789,7 +901,7 @@ class Player(AbstractPlayer):
         """
         return self._nationality
 
-    @_int_property_decorator
+    @property
     def games_played(self):
         """
         Returns an ``int`` of the number of games the player participated in.
@@ -1390,6 +1502,40 @@ class Roster:
         else:
             self._players = []
         self._find_players_with_coach(year)
+        if self._team and self._players:
+            print(f"Writing updated {self._team} roster to local database...")
+            conn = sqlite3.connect('players.db')
+            c = conn.cursor()
+            # create table 'players' if it does not already exist
+            c.execute('''
+                      CREATE TABLE IF NOT EXISTS players (
+                      id INTEGER PRIMARY KEY,
+                      sport TEXT,
+                      team TEXT,
+                      name TEXT,
+                      player_id TEXT,
+                      height TEXT,
+                      weight REAL,
+                      position TEXT,
+                      birth_date DATETIME,
+                      nationality TEXT,
+                      team_history TEXT
+                      )''')
+            # insert each player
+            for player in self._players:
+                if player.team_history:
+                    c.execute('''INSERT into players (sport, team, name, player_id, 
+                            height, weight, position, birth_date, nationality, team_history) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
+                            ('NBA', team, player.name, player.player_id, player.height, player.weight, 
+                            player.position, player.birth_date, player.nationality, str(player.team_history)))
+            # remove duplicate players
+            c.execute('''DELETE FROM players WHERE id NOT IN 
+                      (SELECT MAX(id) FROM players GROUP BY sport,team,name,player_id);''')
+            # commit changes and close connection
+            conn.commit()
+            conn.close()
+            print("Done!")
 
     def __str__(self):
         """

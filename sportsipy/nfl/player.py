@@ -187,11 +187,16 @@ class AbstractPlayer:
             if short_field == 'player_id' or \
                short_field == 'index' or \
                short_field == 'most_recent_season' or \
+               short_field == 'contract' or \
                short_field == 'name' or \
-               short_field == 'weight' or \
                short_field == 'height' or \
+               short_field == 'weight' or \
                short_field == 'birth_date' or \
-               short_field == 'season' or \
+               short_field == 'nationality' or \
+               short_field == 'position' or \
+               short_field == 'games_played' or \
+               short_field == 'team_abbreviation' or \
+               short_field == 'team_history' or \
                short_field == 'detailed_stats_seasons' or \
                short_field == 'detailed_stats_index':
                 continue
