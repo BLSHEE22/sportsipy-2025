@@ -10,6 +10,24 @@ from .constants import PLAYER_SCHEME, PLAYER_URL, ROSTER_URL, DETAILED_STATS
 from .player import AbstractPlayer
 from time import sleep
 
+# maps full team name to its abbreviation
+nflTeamTranslator = {"Atlanta Falcons":"ATL", "Buffalo Bills":"BUF", 
+                     "Carolina Panthers":"CAR", "Chicago Bears":"CHI", 
+                     "Cincinnati Bengals":"CIN", "Cleveland Browns":"CLE", 
+                     "Indianapolis Colts":"CLT", "Arizona Cardinals":"CRD", 
+                     "Dallas Cowboys":"DAL", "Denver Broncos":"DEN", 
+                     "Detriot Lions":"DET", "Green Bay Packers":"GNB", 
+                     "Houston Texans":"HTX", "Jacksonville Jaguars":"JAX", 
+                     "Kansas City Chiefs":"KAN", "Miami Dolphins":"MIA", 
+                     "Minnesota Vikings":"MIN", "New Orleans Saints":"NOR", 
+                     "New England Patriots":"NWE", "New York Giants":"NYG",
+                     "New York Jets":"NYJ", "Tennessee Titans":"OTI", 
+                     "Philadelphia Eagles":"PHI", "Pittsburgh Steelers":"PIT", 
+                     "Las Vegas Raiders":"RAI", "Los Angeles Rams":"RAM", 
+                     "Baltimore Ravens":"RAV", "Los Angeles Chargers":"SDG", 
+                     "Seattle Seahawks":"SEA", "San Franciso 49ers":"SFO", 
+                     "Tamp Bay Buccaneers":"TAM", "Washington Commanders":"WAS"}
+
 # maps field to its .items() index
 field_map = {'height':0, 'weight':1, 'birth_date':2, 'position':2}
 
@@ -810,7 +828,7 @@ class Player(AbstractPlayer):
         New Orleans Saints.
         """
         if self._team_abbreviation:
-            return self._team_abbreviation[0]
+            return nflTeamTranslator[self._team_abbreviation[0]]
         else:
             return None
     
@@ -1831,7 +1849,7 @@ class Roster:
                     c.execute('''INSERT into players (sport, team, name, player_id, 
                             height, weight, position, birth_date, team_history) 
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
-                            ('NFL', team, player.name, player.player_id, player.height, player.weight, 
+                            ('NFL', player.team_abbreviation, player.name, player.player_id, player.height, player.weight, 
                             player.position, player.birth_date, str(player.team_history)))
             # remove duplicate players
             c.execute('''DELETE FROM players WHERE id NOT IN 
