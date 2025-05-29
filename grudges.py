@@ -208,7 +208,6 @@ print()
 #### NFL DEBUG
 ## TODO
 ## - sort each position grouping by career games played
-## - calculate most 'grudged' offense by opposing defensive players (helps to pick out D/ST for week)
 # player1 = NFLPlayer('JoseGr00')
 # print(f"Name: {player1.name}")
 # print(f"Experience: {player1.season}")

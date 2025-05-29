@@ -25,7 +25,7 @@ nflTeamTranslator = {"Atlanta Falcons":"ATL", "Buffalo Bills":"BUF",
                      "Philadelphia Eagles":"PHI", "Pittsburgh Steelers":"PIT", 
                      "Las Vegas Raiders":"RAI", "Los Angeles Rams":"RAM", 
                      "Baltimore Ravens":"RAV", "Los Angeles Chargers":"SDG", 
-                     "Seattle Seahawks":"SEA", "San Franciso 49ers":"SFO", 
+                     "Seattle Seahawks":"SEA", "San Francisco 49ers":"SFO", 
                      "Tamp Bay Buccaneers":"TAM", "Washington Commanders":"WAS"}
 
 # maps field to its .items() index
