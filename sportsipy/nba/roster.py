@@ -1531,7 +1531,7 @@ class Roster:
                             player.position, player.birth_date, player.nationality, str(player.team_history)))
             # remove duplicate players
             c.execute('''DELETE FROM players WHERE id NOT IN 
-                      (SELECT MAX(id) FROM players GROUP BY sport,team,name,player_id);''')
+                      (SELECT MAX(id) FROM players GROUP BY sport,name,player_id);''')
             # commit changes and close connection
             conn.commit()
             conn.close()

@@ -22,8 +22,8 @@ playersWithGrudges = []
 
 def welcome():
     print("\n" + BOLD + "Welcome to Grudge Match Detector! " + RESET + "\n")
-    print("A 'grudge match' is when a player squares off against his/her previous team.\n")
-    print("It is a good indicator of success for the player in the match.\n")
+    print("When a player squares off against his/her previous team, it is considered a \"grudge match.\"\n")
+    print("Players with grudges often perform better than expected.\n")
     print("Use this knowledge wisely!\n")
 
 def decide(s, valid_options):
@@ -45,7 +45,7 @@ def get_latest_roster(sport, team):
 
 def find_grudges_db(sport, t1, t2):
     print(f"Seeking {t1} players who have previously played for {t2}...")
-    conn = sqlite3.connect('players.db')
+    conn = sqlite3.connect('sportsipy/' + sport.lower() + '/players.db')
     c = conn.cursor()
     c.execute(f"SELECT name, team, team_history FROM players WHERE sport == '{sport}' AND team == '{t1}'")
     rows = c.fetchall()
@@ -84,8 +84,10 @@ print()
 # print(f"Games Played: {player1.games_played}")
 # print(f"Games Started: {player1.games_started}")
 
-## NFL DEBUG
-# player1 = NFLPlayer('NacuPu00')
+#### NFL DEBUG
+## TODO
+## - be able to handle an entire slate of matchups
+# player1 = NFLPlayer('DaniJa02')
 # print(f"Name: {player1.name}")
 # print(f"Experience: {player1.season}")
 # print(f"Height: {player1.height}")

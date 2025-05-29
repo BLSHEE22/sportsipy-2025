@@ -1,4 +1,5 @@
 import pandas as pd
+import sqlite3
 import re
 from functools import wraps
 from lxml.etree import ParserError, XMLSyntaxError
@@ -235,7 +236,7 @@ class Player(AbstractPlayer):
         self._safeties = None
 
         player_data = self._pull_player_data()
-        print(f"Pulled data for {self._name}!")
+        print(f"Pulled data for {self._name}! Sleeping for 3 seconds...")
         if not player_data:
             return
         self._find_initial_index()
@@ -474,7 +475,7 @@ class Player(AbstractPlayer):
             if short_field != 'name':
                 result_list = [obj for obj in [item.text() for item in player_info("#meta div p span").items()]]
                 if result_list:
-                    if '-' not in result_list[0]:
+                    if any(char.isalpha() for char in result_list[0]):
                         result_list = result_list[1:]
                 value = result_list[field_map[short_field]]
             setattr(self, field, value)
@@ -1806,6 +1807,39 @@ class Roster:
             self._players = []
 
         self._find_players_with_coach(year)
+        if self._team and self._players:
+            print(f"Writing updated {self._team} roster to local database...")
+            conn = sqlite3.connect('sportsipy/nfl/players.db')
+            c = conn.cursor()
+            # create table 'players' if it does not already exist
+            c.execute('''
+                      CREATE TABLE IF NOT EXISTS players (
+                      id INTEGER PRIMARY KEY,
+                      sport TEXT,
+                      team TEXT,
+                      name TEXT,
+                      player_id TEXT,
+                      height TEXT,
+                      weight REAL,
+                      position TEXT,
+                      birth_date DATETIME,
+                      team_history TEXT
+                      )''')
+            # insert each player
+            for player in self._players:
+                if player.team_history:
+                    c.execute('''INSERT into players (sport, team, name, player_id, 
+                            height, weight, position, birth_date, team_history) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
+                            ('NFL', team, player.name, player.player_id, player.height, player.weight, 
+                            player.position, player.birth_date, str(player.team_history)))
+            # remove duplicate players
+            c.execute('''DELETE FROM players WHERE id NOT IN 
+                      (SELECT MAX(id) FROM players GROUP BY sport,name,player_id);''')
+            # commit changes and close connection
+            conn.commit()
+            conn.close()
+            print("Done!")
 
     def __str__(self):
         """
