@@ -3,7 +3,6 @@ from sportsipy.nba.roster import Player as NBAPlayer
 from sportsipy.nfl.roster import Roster as NFLRoster
 from sportsipy.nfl.roster import Player as NFLPlayer
 from time import sleep
-import ast
 import sqlite3
 
 # COLORS
@@ -97,7 +96,7 @@ def find_grudges(t1, t2):
     c = conn.cursor()
     c.execute(f"""
               SELECT name, position, team, team_history FROM players WHERE 
-              sport == '{sport}' AND team == '{t1}'""")
+              sport == '{sport}' AND team == '{t1}' AND instr(team_history, '{t2}') > 0""")
     rows = c.fetchall()
     for row in rows:
         name, position, curr_team, team_history = row
@@ -106,18 +105,16 @@ def find_grudges(t1, t2):
             pos_list = position.split("-")
         else:
             pos_list = [position]
-        team_history = ast.literal_eval(team_history)
-        if t2 in team_history:
-            for pos in pos_list:
-                all_pos = fantasy_positions + defensive_positions + \
-                    offensive_line_positions + utility_positions
-                if pos not in all_pos:
-                    pos = position_translator[pos]
-                try:
-                    playersWithGrudges[pos].append((name, t1, t2))
-                except:
-                    playersWithGrudges[pos] = []
-                    playersWithGrudges[pos].append((name, t1, t2))
+        for pos in pos_list:
+            all_pos = fantasy_positions + defensive_positions + \
+                offensive_line_positions + utility_positions
+            if pos not in all_pos:
+                pos = position_translator[pos]
+            try:
+                playersWithGrudges[pos].append((name, t1, t2))
+            except:
+                playersWithGrudges[pos] = []
+                playersWithGrudges[pos].append((name, t1, t2))
 
 def find_grudges_in_slate(week):
     """
