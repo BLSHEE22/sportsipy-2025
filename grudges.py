@@ -86,9 +86,9 @@ def find_grudges(t1, t2):
      
     2. Stores matches into global `playersWithGrudges` according to position.
 
-    :param t1: Current team
+    :param t1: Current team.
     :type t1: str
-    :param t2: Former team
+    :param t2: Former team.
     :type t2: str
     """
     #print(f"\nSeeking {t1} players who have previously played for {t2}...")
@@ -120,7 +120,7 @@ def find_grudges_in_slate(week):
     """
     Finds grudges within an entire week's matchup slate.
 
-    :param week: The regular season week (e.g. 1-17)
+    :param week: The regular season week (e.g. 1-17).
     :type week: str
     """
     print(f"\nFinding all grudge matches in the {sport} week {week} slate...\n")
@@ -130,7 +130,44 @@ def find_grudges_in_slate(week):
         find_grudges(away_team, home_team)
         find_grudges(home_team, away_team)
 
-# def display_grudges
+def count_dst_grudges():
+    """
+    1. Count D/ST player grudges per team and sort by highest-to-lowest.
+
+    2. Add sublist of the top three entries to `playersWithGrudges` under 'D/ST'.
+    """
+    dst_grudges = {"D/ST":[]}
+    for pos in playersWithGrudges.keys():
+        if pos in defensive_positions:
+            for player in playersWithGrudges[pos]:
+                dst_grudges["D/ST"].append(player)
+    dsts = [(g[1], g[2]) for g in dst_grudges["D/ST"]]
+    dsts_temp = [(team[0], dsts.count(team), team[1]) for team in set(dsts)]
+    dsts_sorted = sorted(dsts_temp, key=lambda x: x[1], reverse=True)[:3]
+    dst_grudges["D/ST"] = dsts_sorted
+    playersWithGrudges.update(dst_grudges)
+
+def display_grudges(position_type, positions):
+    """
+    Print out player grudges by position.
+
+    :param position_type: The print header for the output.
+    :type position_type: str
+    :param positions: The list of positions to print contents for.
+    :type positions: list
+    """
+    print(GREEN + position_type + RESET + "\n")
+    for pos in positions:
+        print(RED + f"{pos}" + RESET + "\n")
+        try:
+            players_at_position = playersWithGrudges[pos]
+        except:
+            print("None\n")
+            continue
+        for player_info in players_at_position:
+            name, curr_team, former_team = player_info
+            print(f"{name} ({curr_team}) has a grudge against {former_team}.")
+        print()
 
 # START
 welcome()
@@ -138,65 +175,12 @@ welcome()
 sport = ask("sport", sports)
 week = ask("week", [str(i) for i in range(1, 18)])
 find_grudges_in_slate(int(week))
+dst_grudges = count_dst_grudges()
 print("\n" + BOLD + "Players with Grudges:" + RESET + "\n")
-dst_grudges = {"D/ST":[]}
-for pos in playersWithGrudges.keys():
-    if pos in defensive_positions:
-        for player in playersWithGrudges[pos]:
-            dst_grudges["D/ST"].append(player)
-dsts = [(g[1], g[2]) for g in dst_grudges["D/ST"]]
-dsts_temp = [(team[0], dsts.count(team), team[1]) for team in set(dsts)]
-dsts_sorted = sorted(dsts_temp, key=lambda x: x[1], reverse=True)[:3]
-dst_grudges["D/ST"] = dsts_sorted
-playersWithGrudges.update(dst_grudges)
-print(GREEN + "FANTASY" + RESET + "\n")
-for pos in fantasy_positions:
-    print(RED + f"{pos}" + RESET + "\n")
-    try:
-        players_at_position = playersWithGrudges[pos]
-    except:
-        print("None\n")
-        continue
-    for player_info in players_at_position:
-        name, curr_team, former_team = player_info
-        print(f"{name} ({curr_team}) has a grudge against {former_team}.")
-    print()
-print("\n" + GREEN + "DEFENSE" + RESET + "\n")
-for pos in defensive_positions:
-    print(RED + f"{pos}" + RESET + "\n")
-    try:
-        players_at_position = playersWithGrudges[pos]
-    except:
-        print("None\n")
-        continue
-    for player_info in players_at_position:
-        name, curr_team, former_team = player_info
-        print(f"{name} ({curr_team}) has a grudge against {former_team}.")
-    print()
-print("\n" + GREEN + "OFFENSIVE LINE" + RESET + "\n")
-for pos in offensive_line_positions:
-    print(RED + f"{pos}" + RESET + "\n")
-    try:
-        players_at_position = playersWithGrudges[pos]
-    except:
-        print("None\n")
-        continue
-    for player_info in players_at_position:
-        name, curr_team, former_team = player_info
-        print(f"{name} ({curr_team}) has a grudge against {former_team}.")
-    print()
-print("\n" + GREEN + "UTILITY" + RESET + "\n")
-for pos in utility_positions:
-    print(RED + f"{pos}" + RESET + "\n")
-    try:
-        players_at_position = playersWithGrudges[pos]
-    except:
-        print("None\n")
-        continue
-    for player_info in players_at_position:
-        name, curr_team, former_team = player_info
-        print(f"{name} ({curr_team}) has a grudge against {former_team}.")
-    print()
+display_grudges("FANTASY", fantasy_positions)
+display_grudges("DEFENSE", defensive_positions)
+display_grudges("OFFENSIVE LINE", offensive_line_positions)
+display_grudges("UTILITY", utility_positions)
 print()
 
 #### NBA DEBUG
