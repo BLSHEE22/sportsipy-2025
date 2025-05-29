@@ -456,6 +456,9 @@ class Player(AbstractPlayer):
             A PyQuery object containing the HTML from the player's stats page.
         """
         value = [item.text() for item in player_info('#meta div a').items()]
+        if value:
+            if value[0] not in nflTeamTranslator.keys():
+                value = None
         setattr(self, '_team_abbreviation', value)
     
     def _parse_team_history(self, player_info):

@@ -66,9 +66,9 @@ def ask(q, valid_options):
             print(f"\n\'{ans}\' is not a valid {s}.")
     return ans
 
-def get_latest_roster(team):
+def update_roster(sport, team):
     """
-    Updates database based on latest information from sports-reference.com.
+    Updates roster based on latest information from sports-reference.com.
 
     :param team: The professional sports team abbreviation (e.g. ATL, BOS).
     :type team: str
@@ -77,7 +77,19 @@ def get_latest_roster(team):
     if sport == "NBA":
         NBARoster(team)
     if sport == "NFL":
-        NFLRoster(team)     
+        NFLRoster(team)    
+
+def update_all_rosters(sport):
+    """
+    Updates all rosters for a sports league.
+
+    :param team: The professional sports league (e.g. NBA, NFL).
+    :type team: str
+    """
+    for team in teams[sport]:
+        update_roster(team)
+        print("Sleeping for 1 minute...")
+        sleep(60)
 
 def find_grudges(t1, t2):
     """
@@ -171,7 +183,11 @@ def display_grudges(position_type, positions):
 
 # START
 welcome()
-#get_latest_roster('NFL', 'WAS')
+#update_all_rosters('NFL')
+update_roster('NFL', 'NOR')
+update_roster('NFL', 'MIN')
+update_roster('NFL', 'MIA')
+update_roster('NFL', 'KAN')
 sport = ask("sport", sports)
 week = ask("week", [str(i) for i in range(1, 18)])
 find_grudges_in_slate(int(week))
@@ -208,6 +224,8 @@ print()
 #### NFL DEBUG
 ## TODO
 ## - sort each position grouping by career games played
+## - extra indicator for if a player has ONLY previously played for the ex-team in question 
+##   (bigger grudge!)
 # player1 = NFLPlayer('JoseGr00')
 # print(f"Name: {player1.name}")
 # print(f"Experience: {player1.season}")
