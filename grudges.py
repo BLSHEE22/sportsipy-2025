@@ -9,8 +9,10 @@ import sqlite3
 # COLORS
 BOLD = '\033[1m'
 RED = '\033[31m'
+GREEN = '\033[32m'
 RESET = '\033[0m'
 
+# GLOBALS
 sports = ["NBA", "NFL"]
 teams = {"NBA":["ATL", "BOS", "BRK", "CHI", "CHO", "CLE", "DAL", "DEN", "DET", "GSW", 
                 "HOU", "IND", "LAC", "LAL", "MEM", "MIA", "MIL", "MIN", "NOP", "NYK", 
@@ -26,65 +28,168 @@ nfl_schedule = [[("DAL", "PHI"), ("KAN", "SDG"), ("TAM", "ATL"), ("CIN", "CLE"),
                 [(), ()],
                 [(), ()],
                 [(), ()],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-fantasy_positions = ["QB", "RB", "WR", "TE", "K", "DT", "DE", "DB", "CB"]
+fantasy_positions = ["QB", "RB", "WR", "TE", "D/ST", "K"]
+defensive_positions = ['DE', 'DT', 'DL', 'LB', 'DB', 'CB', "S"]
+offensive_line_positions = ["T", "G", "C", "OL"]
+utility_positions = ["FB", "LS", "P"]
+position_translator = {"EDGE":"DE", "SAF":"S", "OT":"T", "FS":"S", "SS":"S", "OLB":"LB",
+                       "ILB":"LB", "OG":"G", "Unknown":"Unknown", "NT":"DT", "RILB":"LB",
+                       "MLB":"LB", "LT":"T", "LG":"G", "RG":"G", "RT":"T"}
 playersWithGrudges = {}
 
 def welcome():
+    """
+    Prints a instructional message upon running the script.
+    """
     print("\n" + BOLD + "Welcome to Grudge Match Detector! " + RESET + "\n")
-    print("When a player squares off against his/her previous team, it is considered a \"grudge match.\"\n")
+    print("When a player squares off against his/her previous team, " +
+          "it is considered a \"grudge match.\"\n")
     print("Players with grudges often perform better than expected.\n")
     print("Use this knowledge wisely!")
 
-def decide(s, valid_options):
+def ask(q, valid_options):
+    """
+    Prompts user for a specific sport/team/week.
+
+    :param q: The question we are asking (e.g. sport/team/week).
+    :type q: str
+    :param valid_options: The acceptable answers to the question.
+    :type valid_options: list
+    :return: The user's answer.
+    :rtype: str
+    """
     deciding = True
     while deciding:
-        ans = input("\n" + s.capitalize() + "?\n").upper()
+        ans = input("\n" + q.capitalize() + "?\n").upper()
         if ans in valid_options:
             deciding = False
         else:
             print(f"\n\'{ans}\' is not a valid {s}.")
     return ans
 
-def get_latest_roster(sport, team):
+def get_latest_roster(team):
+    """
+    Updates database based on latest information from sports-reference.com.
+
+    :param team: The professional sports team abbreviation (e.g. ATL, BOS).
+    :type team: str
+    """
     print(f"Grabbing latest {team} roster...")
     if sport == "NBA":
         NBARoster(team)
     if sport == "NFL":
         NFLRoster(team)     
 
-def find_grudges(sport, t1, t2):
-    print(f"\nSeeking {t1} players who have previously played for {t2}...")
+def find_grudges(t1, t2):
+    """
+    1. Queries database for players which currently play for team `t1` and 
+    have previously played for team `t2`.
+     
+    2. Stores matches into global `playersWithGrudges` according to position.
+
+    :param t1: Current team
+    :type t1: str
+    :param t2: Former team
+    :type t2: str
+    """
+    #print(f"\nSeeking {t1} players who have previously played for {t2}...")
     conn = sqlite3.connect('sportsipy/' + sport.lower() + '/players.db')
     c = conn.cursor()
-    c.execute(f"SELECT name, position, team, team_history FROM players WHERE sport == '{sport}' AND team == '{t1}'")
+    c.execute(f"""
+              SELECT name, position, team, team_history FROM players WHERE 
+              sport == '{sport}' AND team == '{t1}'""")
     rows = c.fetchall()
     for row in rows:
         name, position, curr_team, team_history = row
+        position = position.strip()
+        if "-" in position:
+            pos_list = position.split("-")
+        else:
+            pos_list = [position]
         team_history = ast.literal_eval(team_history)
         if t2 in team_history:
-            try:
-                playersWithGrudges[position].append((name, t1, t2))
-            except:
-                playersWithGrudges[position] = []
-                playersWithGrudges[position].append((name, t1, t2))
-            #playersWithGrudges.append(((name, position), t1, t2))
+            for pos in pos_list:
+                all_pos = fantasy_positions + defensive_positions + \
+                    offensive_line_positions + utility_positions
+                if pos not in all_pos:
+                    pos = position_translator[pos]
+                try:
+                    playersWithGrudges[pos].append((name, t1, t2))
+                except:
+                    playersWithGrudges[pos] = []
+                    playersWithGrudges[pos].append((name, t1, t2))
 
-def find_grudges_in_slate(sport, week):
+def find_grudges_in_slate(week):
+    """
+    Finds grudges within an entire week's matchup slate.
+
+    :param week: The regular season week (e.g. 1-17)
+    :type week: str
+    """
     print(f"\nFinding all grudge matches in the {sport} week {week} slate...\n")
     slate = nfl_schedule[week-1]
     for matchup in slate:
         away_team, home_team = matchup
-        find_grudges(sport, away_team, home_team)
-        find_grudges(sport, home_team, away_team)
+        find_grudges(away_team, home_team)
+        find_grudges(home_team, away_team)
+
+# def display_grudges
 
 # START
 welcome()
 #get_latest_roster('NFL', 'WAS')
-sport = decide("sport", sports)
-week = decide("week", [str(i) for i in range(1, 18)])
-find_grudges_in_slate(sport, int(week))
+sport = ask("sport", sports)
+week = ask("week", [str(i) for i in range(1, 18)])
+find_grudges_in_slate(int(week))
 print("\n" + BOLD + "Players with Grudges:" + RESET + "\n")
+dst_grudges = {"D/ST":[]}
+for pos in playersWithGrudges.keys():
+    if pos in defensive_positions:
+        for player in playersWithGrudges[pos]:
+            dst_grudges["D/ST"].append(player)
+dsts = [(g[1], g[2]) for g in dst_grudges["D/ST"]]
+dsts_temp = [(team[0], dsts.count(team), team[1]) for team in set(dsts)]
+dsts_sorted = sorted(dsts_temp, key=lambda x: x[1], reverse=True)[:3]
+dst_grudges["D/ST"] = dsts_sorted
+playersWithGrudges.update(dst_grudges)
+print(GREEN + "FANTASY" + RESET + "\n")
 for pos in fantasy_positions:
+    print(RED + f"{pos}" + RESET + "\n")
+    try:
+        players_at_position = playersWithGrudges[pos]
+    except:
+        print("None\n")
+        continue
+    for player_info in players_at_position:
+        name, curr_team, former_team = player_info
+        print(f"{name} ({curr_team}) has a grudge against {former_team}.")
+    print()
+print("\n" + GREEN + "DEFENSE" + RESET + "\n")
+for pos in defensive_positions:
+    print(RED + f"{pos}" + RESET + "\n")
+    try:
+        players_at_position = playersWithGrudges[pos]
+    except:
+        print("None\n")
+        continue
+    for player_info in players_at_position:
+        name, curr_team, former_team = player_info
+        print(f"{name} ({curr_team}) has a grudge against {former_team}.")
+    print()
+print("\n" + GREEN + "OFFENSIVE LINE" + RESET + "\n")
+for pos in offensive_line_positions:
+    print(RED + f"{pos}" + RESET + "\n")
+    try:
+        players_at_position = playersWithGrudges[pos]
+    except:
+        print("None\n")
+        continue
+    for player_info in players_at_position:
+        name, curr_team, former_team = player_info
+        print(f"{name} ({curr_team}) has a grudge against {former_team}.")
+    print()
+print("\n" + GREEN + "UTILITY" + RESET + "\n")
+for pos in utility_positions:
     print(RED + f"{pos}" + RESET + "\n")
     try:
         players_at_position = playersWithGrudges[pos]
@@ -113,17 +218,16 @@ print()
 # print(f"Games Played: {player1.games_played}")
 # print(f"Games Started: {player1.games_started}")
 
-# team1 = decide("team 1", teams[sport])
-# team2 = decide("team 2", teams[sport]) 
+# team1 = ask("team 1", teams[sport])
+# team2 = ask("team 2", teams[sport]) 
 # sleep(5)
 # find_grudges(sport, team1, team2)
 # find_grudges(sport, team2, team1)
 
 #### NFL DEBUG
 ## TODO
-## - be able to handle an entire slate of matchups
-## - sort output by position
-## - sort each position grouping by games played
+## - sort each position grouping by career games played
+## - calculate most 'grudged' offense by opposing defensive players (helps to pick out D/ST for week)
 # player1 = NFLPlayer('JoseGr00')
 # print(f"Name: {player1.name}")
 # print(f"Experience: {player1.season}")
