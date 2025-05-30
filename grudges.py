@@ -20,13 +20,45 @@ teams = {"NBA":["ATL", "BOS", "BRK", "CHI", "CHO", "CLE", "DAL", "DEN", "DET", "
                 "DET", "GNB", "HTX", "JAX", "KAN", "MIA", "MIN", "NOR", "NWE", "NYG",
                 "NYJ", "OTI", "PHI", "PIT", "RAI", "RAM", "RAV", "SDG", "SEA", "SFO", 
                 "TAM", "WAS"]}
-nfl_schedule = [[("DAL", "PHI"), ("KAN", "SDG"), ("TAM", "ATL"), ("CIN", "CLE"), ("MIA", "CLT"),
+nfl_schedule = [[("DAL", "PHI"), ("KAN", "SDG"), ("TAM", "ATL"), ("CIN", "CLE"), ("MIA", "CLT"), # 1
                  ("CAR", "JAX"), ("RAI", "NWE"), ("CRD", "NOR"), ("PIT", "NYJ"), ("NYG", "WAS"),
                  ("OTI", "DEN"), ("SFO", "SEA"), ("DET", "GNB"), ("HTX", "RAM"), ("RAV", "BUF"),
                  ("MIN", "CHI")],
-                [(), ()],
-                [(), ()],
-                [(), ()],[],[],[],[],[],[],[],[],[],[],[],[],[]]
+                [("WAS", "GNB"), ("CLE", "RAV"), ("JAX", "CIN"), ("NYG", "DAL"), ("CHI", "DET"), # 2
+                 ("NWE", "MIA"), ("SFO", "NOR"), ("BUF", "NYJ"), ("SEA", "PIT"), ("RAM", "OTI"),
+                 ("CAR", "CRD"), ("DEN", "CLT"), ("PHI", "KAN"), ("ATL", "MIN"), ("TAM", "HTX"),
+                 ("SDG", "RAI")],
+                [("MIA", "BUF"), ("ATL", "CAR"), ("GNB", "CLE"), ("HTX", "JAX"), ("CIN", "MIN"), # 3
+                 ("PIT", "NWE"), ("RAM", "PHI"), ("NYJ", "TAM"), ("CLT", "OTI"), ("RAI", "WAS"), 
+                 ("DEN", "SDG"), ("NOR", "SEA"), ("DAL", "CHI"), ("CRD", "SFO"), ("KAN", "NYG"),
+                 ("DET", "RAV")],
+                [("SEA", "CRD"), ("MIN", "PIT"), ("WAS", "ATL"), ("NOR", "BUF"), ("CLE", "DET"), # 4
+                 ("OTI", "HTX"), ("CAR", "NWE"), ("SDG", "NYG"), ("PHI", "TAM"), ("CLT", "RAM"), 
+                 ("JAX", "SFO"), ("RAV", "KAN"), ("CHI", "RAI"), ("GNB", "DAL"), ("NYJ", "MIA"), 
+                 ("CIN", "DEN")],
+                [("SFO", "RAM"), ("MIN", "CLE"), ("HTX", "RAV"), ("MIA", "CAR"), ("RAI", "CLT"), # 5
+                 ("NYG", "NOR"), ("DAL", "NYJ"), ("DEN", "PHI"), ("OTI", "CRD"), ("TAM", "SEA"), 
+                 ("DET", "CIN"), ("WAS", "SDG"), ("NWE", "BUF"), ("KAN", "JAX")],
+                [("PHI", "NYG"), ("DEN", "NYJ"), ("RAM", "RAV"), ("DAL", "CAR"), ("CRD", "CLT"), # 6
+                 ("SEA", "JAX"), ("SDG", "MIA"), ("CLE", "PIT"), ("SFO", "TAM"), ("OTI", "RAI"), 
+                 ("CIN", "GNB"), ("NWE", "NOR"), ("DET", "KAN"), ("BUF", "ATL"), ("CHI", "WAS")],
+                [("PIT", "CIN"), ("RAM", "JAX"), ("NOR", "CHI"), ("MIA", "CLE"), ("RAI", "KAN"), # 7 
+                 ("PHI", "MIN"), ("CAR", "NYJ"), ("NWE", "OTI"), ("NYG", "DEN"), ("CLT", "SDG"), 
+                 ("GNB", "CRD"), ("WAS", "DAL"), ("ATL", "SFO"), ("TAM", "DET"), ("HTX", "SEA")],
+                [("MIN", "SDG"), ("MIA", "ATL"), ("CHI", "RAV"), ("BUF", "CAR"), ("NYJ", "CIN"), # 8 
+                 ("SFO", "HTX"), ("CLE", "NWE"), ("NYG", "PHI"), ("TAM", "NOR"), ("DAL", "DEN"), 
+                 ("OTI", "CLT"), ("GNB", "PIT"), ("WAS", "KAN")],
+                [("RAV", "MIA"), ("CHI", "CIN"), ("MIN", "DET"), ("CAR", "GNB"), ("DEN", "HTX"), # 9
+                 ("ATL", "NWE"), ("SFO", "NYG"), ("CLT", "PIT"), ("SDG", "OTI"), ("NOR", "RAM"), 
+                 ("JAX", "RAI"), ("KAN", "BUF"), ("SEA", "WAS"), ("CRD", "DAL")],
+                [(), (), (), (), (), (), (), (), (), (), (), (), (), ()],
+                [(), (), (), (), (), (), (), (), (), (), (), (), (), ()],
+                [(), (), (), (), (), (), (), (), (), (), (), (), (), ()],
+                [(), (), (), (), (), (), (), (), (), (), (), (), (), ()],
+                [(), (), (), (), (), (), (), (), (), (), (), (), (), ()],
+                [(), (), (), (), (), (), (), (), (), (), (), (), (), ()],
+                [(), (), (), (), (), (), (), (), (), (), (), (), (), ()],
+                [(), (), (), (), (), (), (), (), (), (), (), (), (), ()]]
 fantasy_positions = ["QB", "RB", "WR", "TE", "D/ST", "K"]
 defensive_positions = ['DE', 'DT', 'DL', 'LB', 'DB', 'CB', "S"]
 offensive_line_positions = ["T", "G", "C", "OL"]
@@ -64,7 +96,7 @@ def ask(q, valid_options):
         if ans in valid_options:
             deciding = False
         else:
-            print(f"\n\'{ans}\' is not a valid {s}.")
+            print(f"\n\'{ans}\' is not a valid {q}.")
     return ans
 
 def update_roster(sport, team):
@@ -185,7 +217,7 @@ def display_grudges(position_type, positions):
 # START
 welcome()
 sport = ask("sport", sports)
-week = ask("week", [str(i) for i in range(1, 18)])
+week = ask("week", [str(i) for i in range(1, 19)])
 find_grudges_in_slate(int(week))
 dst_grudges = count_dst_grudges()
 print("\n" + BOLD + "Players with Grudges:" + RESET + "\n")
@@ -220,6 +252,7 @@ print()
 #### NFL DEBUG
 ## TODO
 ## - sort each position grouping by career games played
+## - scrape for player's fantasy pos rk and display as part of output (could sort by pos rk as well)
 ## - extra indicator for if a player has ONLY previously played for the ex-team in question 
 ##   (bigger grudge!)
 # player1 = NFLPlayer('JoseGr00')
