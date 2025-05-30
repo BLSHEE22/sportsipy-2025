@@ -51,14 +51,38 @@ nfl_schedule = [[("DAL", "PHI"), ("KAN", "SDG"), ("TAM", "ATL"), ("CIN", "CLE"),
                 [("RAV", "MIA"), ("CHI", "CIN"), ("MIN", "DET"), ("CAR", "GNB"), ("DEN", "HTX"), # 9
                  ("ATL", "NWE"), ("SFO", "NYG"), ("CLT", "PIT"), ("SDG", "OTI"), ("NOR", "RAM"), 
                  ("JAX", "RAI"), ("KAN", "BUF"), ("SEA", "WAS"), ("CRD", "DAL")],
-                [(), (), (), (), (), (), (), (), (), (), (), (), (), ()],
-                [(), (), (), (), (), (), (), (), (), (), (), (), (), ()],
-                [(), (), (), (), (), (), (), (), (), (), (), (), (), ()],
-                [(), (), (), (), (), (), (), (), (), (), (), (), (), ()],
-                [(), (), (), (), (), (), (), (), (), (), (), (), (), ()],
-                [(), (), (), (), (), (), (), (), (), (), (), (), (), ()],
-                [(), (), (), (), (), (), (), (), (), (), (), (), (), ()],
-                [(), (), (), (), (), (), (), (), (), (), (), (), (), ()]]
+                [("RAI", "DEN"), ("ATL", "CLT"), ("NOR", "CAR"), ("NYG", "CHI"), ("JAX", "HTX"), # 10
+                 ("BUF", "MIA"), ("RAV", "MIN"), ("CLE", "NYJ"), ("NWE", "TAM"), ("CRD", "SEA"), 
+                 ("RAM", "SFO"), ("DET", "WAS"), ("PIT", "SDG"), ("PHI", "GNB")],
+                [("NYJ", "NWE"), ("WAS", "MIA"), ("CAR", "ATL"), ("TAM", "BUF"), ("SDG", "JAX"), # 11 
+                 ("CHI", "MIN"), ("GNB", "NYG"), ("CIN", "PIT"), ("HTX", "OTI"), ("SFO", "CRD"), 
+                 ("SEA", "RAM"), ("RAV", "CLE"), ("KAN", "DEN"), ("DET", "PHI"), ("DAL", "RAI")], # 12
+                [("BUF", "HTX"), ("NYJ", "RAV"), ("PIT", "CHI"), ("NWE", "CIN"), ("NYG", "DET"), 
+                 ("MIN", "GNB"), ("CLT", "KAN"), ("SEA", "OTI"), ("JAX", "CRD"), ("CLE", "RAI"), 
+                 ("PHI", "DAL"), ("ATL", "NOR"), ("TAM", "RAM"), ("CAR", "SFO")],
+                [("GNB", "DET"), ("KAN", "DAL"), ("CIN", "RAV"), ("CHI", "PHI"), ("RAM", "CAR"), # 13
+                 ("SFO", "CLE"), ("HTX", "CLT"), ("NOR", "MIA"), ("ATL", "NYJ"), ("CRD", "TAM"), 
+                 ("JAX", "OTI"), ("MIN", "SEA"), ("RAI", "SDG"), ("BUF", "PIT"), ("DEN", "WAS"),
+                 ("NYG", "NWE")],
+                [("DAL", "DET"), ("SEA", "ATL"), ("PIT", "RAV"), ("OTI", "CLE"), ("CHI", "GNB"), # 14
+                 ("CLT", "JAX"), ("WAS", "MIN"), ("MIA", "NYJ"), ("NOR", "TAM"), ("DEN", "RAI"), 
+                 ("RAM", "CRD"), ("CIN", "BUF"), ("HTX", "KAN"), ("PHI", "SDG")],
+                [("ATL", "TAM"), ("CLE", "CHI"), ("RAV", "CIN"), ("CRD", "HTX"), ("NYJ", "JAX"), # 15
+                 ("SDG", "KAN"), ("BUF", "NWE"), ("WAS", "NYG"), ("RAI", "PHI"), ("GNB", "DEN"), 
+                 ("DET", "RAM"), ("CAR", "NOR"), ("CLT", "SEA"), ("OTI", "SFO"), ("MIN", "DAL"),
+                 ("MIA", "PIT")],
+                [("RAM", "SEA"), ("NWE", "RAV"), ("TAM", "CAR"), ("BUF", "CLE"), ("SDG", "DAL"), # 16
+                 ("NYJ", "NOR"), ("MIN", "NYG"), ("KAN", "OTI"), ("ATL", "CRD"), ("JAX", "DEN"), 
+                 ("PIT", "DET"), ("RAI", "HTX"), ("CIN", "MIA"), ("SFO", "CLT"), ("GNB", "CHI"),
+                 ("PHI", "WAS")],
+                [("DAL", "WAS"), ("DET", "MIN"), ("DEN", "KAN"), ("PIT", "CLE"), ("JAX", "CLT"), # 17
+                 ("TAM", "MIA"), ("NWE", "NYJ"), ("NOR", "OTI"), ("PHI", "BUF"), ("CHI", "SFO"), 
+                 ("RAM", "ATL"), ("SEA", "CAR"), ("CRD", "CIN"), ("RAV", "GNB"), ("HTX", "SDG"),
+                 ("NYG", "RAI")],
+                [("NOR", "ATL"), ("NYJ", "BUF"), ("DET", "CHI"), ("CLE", "CIN"), ("SDG", "DEN"), # 18
+                 ("CLT", "HTX"), ("OTI", "JAX"), ("CRD", "RAM"), ("KAN", "RAI"), ("GNB", "MIN"), 
+                 ("MIA", "NWE"), ("DAL", "NYG"), ("WAS", "PHI"), ("RAV", "PIT"), ("SEA", "SFO"), 
+                 ("CAR", "TAM")]]
 fantasy_positions = ["QB", "RB", "WR", "TE", "D/ST", "K"]
 defensive_positions = ['DE', 'DT', 'DL', 'LB', 'DB', 'CB', "S"]
 offensive_line_positions = ["T", "G", "C", "OL"]
@@ -229,6 +253,10 @@ print()
 
 #### NBA DEBUG
 ## TODO
+## address 'detriot' typo (we need to re-update all rosters)
+## - a player grudge against his/her original team is caled a 'primary grudge' 
+##   (distinguish somehow!)
+##   - for this we need to collect the player's drafted team and store in new column in DB
 ## - sort player grudges by highest to lowest career avg minutes per game
 # player1 = NBAPlayer('armstta02')
 # print(f"Name: {player1.name}")

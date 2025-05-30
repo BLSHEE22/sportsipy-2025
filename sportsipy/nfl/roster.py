@@ -16,7 +16,7 @@ nflTeamTranslator = {"Atlanta Falcons":"ATL", "Buffalo Bills":"BUF",
                      "Cincinnati Bengals":"CIN", "Cleveland Browns":"CLE", 
                      "Indianapolis Colts":"CLT", "Arizona Cardinals":"CRD", 
                      "Dallas Cowboys":"DAL", "Denver Broncos":"DEN", 
-                     "Detriot Lions":"DET", "Green Bay Packers":"GNB", 
+                     "Detroit Lions":"DET", "Green Bay Packers":"GNB", 
                      "Houston Texans":"HTX", "Jacksonville Jaguars":"JAX", 
                      "Kansas City Chiefs":"KAN", "Miami Dolphins":"MIA", 
                      "Minnesota Vikings":"MIN", "New Orleans Saints":"NOR", 
@@ -474,6 +474,10 @@ class Player(AbstractPlayer):
             A PyQuery object containing the HTML from the player's stats page.
         """
         value = set(team for team in set(item.text() for item in player_info('td[data-stat="team_name_abbr"]').items()) if all(char.isupper() for char in team) and team != "")
+        if value:
+            if "LAR" in value:
+                value.remove("LAR")
+                value.add("RAM")
         setattr(self, '_team_history', value)
 
     def _parse_player_information(self, player_info):
