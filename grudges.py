@@ -43,7 +43,8 @@ def welcome():
     print("\n" + BOLD + "Welcome to Grudge Match Detector! " + RESET + "\n")
     print("When a player squares off against his/her previous team, " +
           "it is considered a \"grudge match.\"\n")
-    print("Players with grudges often perform better than expected.\n")
+    print("Players with " + RED + "grudges" + RESET + " often perform better than " + 
+          "what is usually expected of them.\n")
     print("Use this knowledge wisely!")
 
 def ask(q, valid_options):
@@ -183,11 +184,6 @@ def display_grudges(position_type, positions):
 
 # START
 welcome()
-#update_all_rosters('NFL')
-update_roster('NFL', 'NOR')
-update_roster('NFL', 'MIN')
-update_roster('NFL', 'MIA')
-update_roster('NFL', 'KAN')
 sport = ask("sport", sports)
 week = ask("week", [str(i) for i in range(1, 18)])
 find_grudges_in_slate(int(week))
