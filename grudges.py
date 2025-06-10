@@ -10,6 +10,8 @@ import sqlite3
 BOLD = '\033[1m'
 RED = '\033[31m'
 GREEN = '\033[32m'
+GOLD = '\033[33m'
+CYAN = '\033[36m'
 RESET = '\033[0m'
 
 # GLOBALS
@@ -162,14 +164,14 @@ def find_grudges(t1, t2):
     :type t2: str
     """
     #print(f"\nSeeking {t1} players who have previously played for {t2}...")
-    conn = sqlite3.connect('sportsipy/' + sport.lower() + '/players2.db')
+    conn = sqlite3.connect('sportsipy/' + sport.lower() + '/players.db')
     c = conn.cursor()
     c.execute(f"""
-              SELECT name, position, team, team_history, initial_team FROM players WHERE 
+              SELECT name, position, team, team_history, initial_team, fantasy_pos_rk FROM players WHERE 
               sport == '{sport}' AND team == '{t1}' AND instr(team_history, '{t2}') > 0""")
     rows = c.fetchall()
     for row in rows:
-        name, position, curr_team, team_history, initial_team = row
+        name, position, curr_team, team_history, initial_team, fantasy_pos_rk = row
         years_played = ast.literal_eval(team_history)[t2]
         position = position.strip()
         if "-" in position:
@@ -182,10 +184,10 @@ def find_grudges(t1, t2):
             if pos not in all_pos:
                 pos = position_translator[pos]
             try:
-                playersWithGrudges[pos].append((name, t1, t2, years_played, initial_team))
+                playersWithGrudges[pos].append((name, t1, t2, years_played, initial_team, fantasy_pos_rk))
             except:
                 playersWithGrudges[pos] = []
-                playersWithGrudges[pos].append((name, t1, t2, years_played, initial_team))
+                playersWithGrudges[pos].append((name, t1, t2, years_played, initial_team, fantasy_pos_rk))
 
 def find_grudges_in_slate(week):
     """
@@ -213,10 +215,11 @@ def count_dst_grudges():
             for player in playersWithGrudges[pos]:
                 dst_grudges["D/ST"].append(player)
     dsts = [(g[1], g[2]) for g in dst_grudges["D/ST"]]
-    dsts_temp = [(team[0], dsts.count(team), team[1], '', '') for team in set(dsts)]
+    dsts_temp = [(team[0], dsts.count(team), team[1], '', '', '') for team in set(dsts)]
     dsts_sorted = sorted(dsts_temp, key=lambda x: x[1], reverse=True)[:3]
     dst_grudges["D/ST"] = dsts_sorted
-    playersWithGrudges.update(dst_grudges)
+    if dst_grudges["D/ST"]:
+        playersWithGrudges.update(dst_grudges)
 
 def display_grudges(position_type, positions):
     """
@@ -236,26 +239,29 @@ def display_grudges(position_type, positions):
             print("None\n")
             continue
         for player_info in players_at_position:
-            name, curr_team, former_team, yrs_played, initial_team = player_info
+            name, curr_team, former_team, yrs_played, initial_team, fantasy_pos_rk = player_info
             grudge_type = "grudge"
             if initial_team == former_team:
-                grudge_type = "primary grudge"
+                grudge_type = CYAN + "primary grudge"
             yrs_spent = len(yrs_played)
             yrs_spent_str = "season"
             if yrs_spent > 1:
                 yrs_spent_str = "seasons"
-            print(BOLD + name + RESET + f" ({curr_team}) has a {grudge_type} against {former_team}.")
+            print(BOLD + name + RESET + f" ({curr_team}) has a {grudge_type}" + RESET + f" against {former_team}.")
             if pos != "D/ST":
                 print(f"He spent {yrs_spent} {yrs_spent_str} with {former_team} {yrs_played}.")
-                if position_type == "FANTASY":
-                    print(f"His position rank in fantasy this season is asdf.")
+            if position_type == "FANTASY":
+                if fantasy_pos_rk:
+                    if int(fantasy_pos_rk) < 20:
+                        fantasy_pos_rk = GOLD + fantasy_pos_rk
+                    print(f"His position rank in fantasy this season is {fantasy_pos_rk}" + RESET + ".")
             print()
     print()
 
 # START
 welcome()
-#update_roster('NFL', 'NWE')
-#update_roster('NFL', 'BUF')
+update_roster('NFL', 'CIN')
+update_roster('NFL', 'MIN')
 #update_all_rosters('NFL')
 sport = ask("sport", sports)
 week = ask("week", [str(i) for i in range(1, 19)])

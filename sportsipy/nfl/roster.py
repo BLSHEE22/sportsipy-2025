@@ -481,14 +481,10 @@ class Player(AbstractPlayer):
         for i in range(0, len(team_hist)-1):
             if team_hist[i] == '':
                 team_hist[i] = team_hist[i+1]
-        print(team_hist)
-        print()
         years_played = [item.text().replace('*', '') for item in player_info('[id="snap_counts"] th[data-stat="year_id"]').items()][1:]
         for i in range(1, len(years_played)):
             if years_played[i] == '':
                 years_played[i] = years_played[i-1]
-        print(years_played)
-        print()
         if team_hist:
             if "LAR" in team_hist:
                 team_hist = [team.replace("LAR", "RAM") for team in team_hist]
@@ -507,13 +503,7 @@ class Player(AbstractPlayer):
             initial_team = team_hist[0]
         else:
             initial_team = None
-        print(team_hist)
-        print()
-        for i in range(len(team_hist)):
-            print(f"{team_hist[i]}: {years_played[i]}")
         team_hist_full = set([(team_hist[i], years_played[i]) for i in range(len(team_hist))])
-        print(team_hist_full)
-        print()
         team_hist_dict = dict()
         for team, yr in team_hist_full:
             if 'TM' not in team and team != '':
@@ -523,10 +513,6 @@ class Player(AbstractPlayer):
                     team_hist_dict[team] = []
                 team_hist_dict[team].append(yr)
                 team_hist_dict[team] = sorted([yr for yr in team_hist_dict[team] if all(char.isnumeric() or char == '*' for char in yr)])
-        print(team_hist_dict)
-
-        # CONVERT TEAM HISTORY LIST TO SET
-        #team_hist = set(team_hist)
 
         setattr(self, '_initial_team', initial_team)
         setattr(self, '_team_history', team_hist_dict)
@@ -1942,7 +1928,7 @@ class Roster:
         self._find_players_with_coach(year)
         if self._team and self._players:
             print(f"Writing updated {self._team} roster to local database...")
-            conn = sqlite3.connect('sportsipy/nfl/players2.db')
+            conn = sqlite3.connect('sportsipy/nfl/players.db')
             c = conn.cursor()
             # create table 'players' if it does not already exist
             c.execute('''
@@ -1957,16 +1943,17 @@ class Roster:
                       position TEXT,
                       birth_date DATETIME,
                       team_history TEXT,
-                      initial_team TEXT
+                      initial_team TEXT,
+                      fantasy_pos_rk TEXT
                       )''')
             # insert each player
             for player in self._players:
                 if player.team_history:
                     c.execute('''INSERT into players (sport, team, name, player_id, 
-                            height, weight, position, birth_date, team_history, initial_team) 
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
+                            height, weight, position, birth_date, team_history, initial_team, fantasy_pos_rk) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
                             ('NFL', player.team_abbreviation, player.name, player.player_id, player.height, player.weight, 
-                            player.position, player.birth_date, str(player.team_history), player.initial_team))
+                            player.position, player.birth_date, str(player.team_history), player.initial_team, player.fantasy_pos_rk))
             # remove duplicate players
             c.execute('''DELETE FROM players WHERE id NOT IN 
                       (SELECT MAX(id) FROM players GROUP BY sport,name,player_id);''')
