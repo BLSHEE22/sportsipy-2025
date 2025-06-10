@@ -197,6 +197,9 @@ class AbstractPlayer:
                short_field == 'games_played' or \
                short_field == 'team_abbreviation' or \
                short_field == 'team_history' or \
+               short_field == 'initial_team' or \
+               short_field == 'weighted_career_av' or \
+               short_field == 'fantasy_pos_rk' or \
                short_field == 'detailed_stats_seasons' or \
                short_field == 'detailed_stats_index':
                 continue

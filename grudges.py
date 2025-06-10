@@ -3,6 +3,7 @@ from sportsipy.nba.roster import Player as NBAPlayer
 from sportsipy.nfl.roster import Roster as NFLRoster
 from sportsipy.nfl.roster import Player as NFLPlayer
 from time import sleep
+import ast
 import sqlite3
 
 # COLORS
@@ -161,14 +162,15 @@ def find_grudges(t1, t2):
     :type t2: str
     """
     #print(f"\nSeeking {t1} players who have previously played for {t2}...")
-    conn = sqlite3.connect('sportsipy/' + sport.lower() + '/players.db')
+    conn = sqlite3.connect('sportsipy/' + sport.lower() + '/players2.db')
     c = conn.cursor()
     c.execute(f"""
-              SELECT name, position, team, team_history FROM players WHERE 
+              SELECT name, position, team, team_history, initial_team FROM players WHERE 
               sport == '{sport}' AND team == '{t1}' AND instr(team_history, '{t2}') > 0""")
     rows = c.fetchall()
     for row in rows:
-        name, position, curr_team, team_history = row
+        name, position, curr_team, team_history, initial_team = row
+        years_played = ast.literal_eval(team_history)[t2]
         position = position.strip()
         if "-" in position:
             pos_list = position.split("-")
@@ -180,10 +182,10 @@ def find_grudges(t1, t2):
             if pos not in all_pos:
                 pos = position_translator[pos]
             try:
-                playersWithGrudges[pos].append((name, t1, t2))
+                playersWithGrudges[pos].append((name, t1, t2, years_played, initial_team))
             except:
                 playersWithGrudges[pos] = []
-                playersWithGrudges[pos].append((name, t1, t2))
+                playersWithGrudges[pos].append((name, t1, t2, years_played, initial_team))
 
 def find_grudges_in_slate(week):
     """
@@ -211,7 +213,7 @@ def count_dst_grudges():
             for player in playersWithGrudges[pos]:
                 dst_grudges["D/ST"].append(player)
     dsts = [(g[1], g[2]) for g in dst_grudges["D/ST"]]
-    dsts_temp = [(team[0], dsts.count(team), team[1]) for team in set(dsts)]
+    dsts_temp = [(team[0], dsts.count(team), team[1], '', '') for team in set(dsts)]
     dsts_sorted = sorted(dsts_temp, key=lambda x: x[1], reverse=True)[:3]
     dst_grudges["D/ST"] = dsts_sorted
     playersWithGrudges.update(dst_grudges)
@@ -234,12 +236,27 @@ def display_grudges(position_type, positions):
             print("None\n")
             continue
         for player_info in players_at_position:
-            name, curr_team, former_team = player_info
-            print(f"{name} ({curr_team}) has a grudge against {former_team}.")
-        print()
+            name, curr_team, former_team, yrs_played, initial_team = player_info
+            grudge_type = "grudge"
+            if initial_team == former_team:
+                grudge_type = "primary grudge"
+            yrs_spent = len(yrs_played)
+            yrs_spent_str = "season"
+            if yrs_spent > 1:
+                yrs_spent_str = "seasons"
+            print(BOLD + name + RESET + f" ({curr_team}) has a {grudge_type} against {former_team}.")
+            if pos != "D/ST":
+                print(f"He spent {yrs_spent} {yrs_spent_str} with {former_team} {yrs_played}.")
+                if position_type == "FANTASY":
+                    print(f"His position rank in fantasy this season is asdf.")
+            print()
+    print()
 
 # START
 welcome()
+#update_roster('NFL', 'NWE')
+#update_roster('NFL', 'BUF')
+#update_all_rosters('NFL')
 sport = ask("sport", sports)
 week = ask("week", [str(i) for i in range(1, 19)])
 find_grudges_in_slate(int(week))
@@ -249,11 +266,38 @@ display_grudges("FANTASY", fantasy_positions)
 display_grudges("DEFENSE", defensive_positions)
 display_grudges("OFFENSIVE LINE", offensive_line_positions)
 display_grudges("UTILITY", utility_positions)
-print()
+
+#### NFL DEBUG
+## TODO
+## - update all rosters (re: IND vs. CLT fix)
+## - define a player grudge against his/her original team as a 'primary grudge'. 
+##   - for this we need to collect the player's initial team and store in new column in DB
+## - collect yrs spent with grudged team
+##   - can sort by timespan spent with grudged team
+##   - e.g. Aaron Rodgers spent 18 seasons with GNB, 2 with NYJ (2023, 2024).
+## - if a player grudge is a starter, color the player name in bold/gold.
+## - scrape for player's fantasy pos rk and display as part of output (could sort by pos rk as well)
+# player1 = NFLPlayer('AddiTu00')
+# print(f"Name: {player1.name}")
+# print(f"Position: {player1.position}")
+# print(f"Height: {player1.height}")
+# print(f"Weight: {player1.weight}")
+# print(f"Current Team: {player1.team_abbreviation}")
+# print(f"Birth Date: {player1.birth_date}")
+# print(f"Experience: {player1.season}")
+# print(f"Team History: {player1.team_history}")
+# print(f"Initial Team: {player1.initial_team}")
+# print(f"Position Rank (Fantasy): {player1.fantasy_pos_rk}")
+# print(f"Weighted Career Average Value: {player1.weighted_career_av}")
+
+#### CCBL? 
+## TODO
+# - Figure out how to write to database
+# - Figure out how to host on github.io website
+# - Figure out front end!
 
 #### NBA DEBUG
 ## TODO
-## address 'detriot' typo (we need to re-update all rosters)
 ## - a player grudge against his/her original team is caled a 'primary grudge' 
 ##   (distinguish somehow!)
 ##   - for this we need to collect the player's drafted team and store in new column in DB
@@ -270,30 +314,3 @@ print()
 # print(f"Current Team: {player1.team_abbreviation}")
 # print(f"Games Played: {player1.games_played}")
 # print(f"Games Started: {player1.games_started}")
-
-# team1 = ask("team 1", teams[sport])
-# team2 = ask("team 2", teams[sport]) 
-# sleep(5)
-# find_grudges(sport, team1, team2)
-# find_grudges(sport, team2, team1)
-
-#### NFL DEBUG
-## TODO
-## - sort each position grouping by career games played
-## - scrape for player's fantasy pos rk and display as part of output (could sort by pos rk as well)
-## - extra indicator for if a player has ONLY previously played for the ex-team in question 
-##   (bigger grudge!)
-# player1 = NFLPlayer('JoseGr00')
-# print(f"Name: {player1.name}")
-# print(f"Experience: {player1.season}")
-# print(f"Height: {player1.height}")
-# print(f"Weight: {player1.weight}")
-# print(f"Position: {player1.position}")
-# print(f"Birth Date: {player1.birth_date}")
-# print(f"Team History: {player1.team_history}")
-# print(f"Current Team: {player1.team_abbreviation}")
-
-## CCBL? TODO
-# Figure out how to write to database
-# Figure out how to host on github.io website
-# Figure out front end!

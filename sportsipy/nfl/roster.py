@@ -121,6 +121,9 @@ class Player(AbstractPlayer):
         self._name = None
         self._team_abbreviation = None
         self._team_history = None
+        self._initial_team = None
+        self._weighted_career_av = None
+        self._fantasy_pos_rk = None
         self._position = None
         self._height = None
         self._weight = None
@@ -473,12 +476,60 @@ class Player(AbstractPlayer):
         player_info : PyQuery object
             A PyQuery object containing the HTML from the player's stats page.
         """
-        value = set(team for team in set(item.text() for item in player_info('td[data-stat="team_name_abbr"]').items()) if all(char.isupper() for char in team) and team != "")
-        if value:
-            if "LAR" in value:
-                value.remove("LAR")
-                value.add("RAM")
-        setattr(self, '_team_history', value)
+        # track team history via 'Snap Counts' data
+        team_hist = [item.text() for item in player_info('[id="snap_counts"] td[data-stat="team"]').items()]
+        for i in range(0, len(team_hist)-1):
+            if team_hist[i] == '':
+                team_hist[i] = team_hist[i+1]
+        print(team_hist)
+        print()
+        years_played = [item.text().replace('*', '') for item in player_info('[id="snap_counts"] th[data-stat="year_id"]').items()][1:]
+        for i in range(1, len(years_played)):
+            if years_played[i] == '':
+                years_played[i] = years_played[i-1]
+        print(years_played)
+        print()
+        if team_hist:
+            if "LAR" in team_hist:
+                team_hist = [team.replace("LAR", "RAM") for team in team_hist]
+            if "STL" in team_hist:
+                team_hist = [team.replace("STL", "RAM") for team in team_hist]
+            if "LAC" in team_hist:
+                team_hist = [team.replace("LAC", "SDG") for team in team_hist]
+            if "IND" in team_hist:
+                team_hist = [team.replace("IND", "CLT") for team in team_hist]
+            if "OAK" in team_hist:
+                team_hist = [team.replace("OAK", "RAI") for team in team_hist]
+            if "LVR-OAK" in team_hist:
+                team_hist = [team.replace("LVR-OAK", "RAI") for team in team_hist]
+            if "LVR" in team_hist:
+                team_hist = [team.replace("LVR", "RAI") for team in team_hist]
+            initial_team = team_hist[0]
+        else:
+            initial_team = None
+        print(team_hist)
+        print()
+        for i in range(len(team_hist)):
+            print(f"{team_hist[i]}: {years_played[i]}")
+        team_hist_full = set([(team_hist[i], years_played[i]) for i in range(len(team_hist))])
+        print(team_hist_full)
+        print()
+        team_hist_dict = dict()
+        for team, yr in team_hist_full:
+            if 'TM' not in team and team != '':
+                try:
+                    team_hist_dict[team]
+                except:
+                    team_hist_dict[team] = []
+                team_hist_dict[team].append(yr)
+                team_hist_dict[team] = sorted([yr for yr in team_hist_dict[team] if all(char.isnumeric() or char == '*' for char in yr)])
+        print(team_hist_dict)
+
+        # CONVERT TEAM HISTORY LIST TO SET
+        #team_hist = set(team_hist)
+
+        setattr(self, '_initial_team', initial_team)
+        setattr(self, '_team_history', team_hist_dict)
 
     def _parse_player_information(self, player_info):
         """
@@ -498,7 +549,7 @@ class Player(AbstractPlayer):
             short_field = str(field)[1:]
             value = player_info("h1").text()
             if short_field != 'name':
-                result_list = [obj for obj in [item.text() for item in player_info("#meta div p span").items()]]
+                result_list = [item.text() for item in player_info("#meta div p span").items()]
                 if result_list:
                     if any(char.isalpha() for char in result_list[0]):
                         result_list = result_list[1:]
@@ -547,6 +598,40 @@ class Player(AbstractPlayer):
         date = player_info('#necro-birth').attr('data-birth')
         setattr(self, '_birth_date', date)
 
+    def _parse_career_av(self, player_info):
+        """
+        Parse the player's weighted career average value.
+
+        Parameters
+        ----------
+        player_info : PyQuery object
+            A PyQuery object containing the HTML from the player's stats page.
+        """
+        value = None
+        career_av_field = [t for t in [item.text() for item in player_info("#meta div p").items()] if 'Weighted Career AV' in t]
+        if career_av_field:
+            field_and_value = career_av_field[0].split(":")
+            if field_and_value:
+                value = field_and_value[1]
+                stop_index = value.index("(")
+                value = value[1:stop_index-1]
+        setattr(self, '_weighted_career_av', value)
+
+    def _parse_fantasy_pos_rk(self, player_info):
+        """
+        Parse the player's fantasy position rank.
+
+        Parameters
+        ----------
+        player_info : PyQuery object
+            A PyQuery object containing the HTML from the player's stats page.
+        """
+        value = None
+        fantasy_pos_rk_field = [item.text() for item in player_info('td[data-stat="fantasy_rank_pos"]').items()]
+        if fantasy_pos_rk_field:
+            value = fantasy_pos_rk_field[-2]
+        setattr(self, '_fantasy_pos_rk', value)
+
     def _pull_player_data(self):
         """
         Pull and aggregate all player information.
@@ -572,6 +657,8 @@ class Player(AbstractPlayer):
         self._parse_birth_date(player_info)
         self._parse_team(player_info)
         self._parse_team_history(player_info)
+        self._parse_career_av(player_info)
+        self._parse_fantasy_pos_rk(player_info)
         setattr(self, '_season', list(all_stats.keys()))
         return all_stats
 
@@ -845,6 +932,27 @@ class Player(AbstractPlayer):
         Returns a ``Set`` of all teams played for by the player, such as {SAC, BOS} for Neemias Queta.
         """
         return self._team_history
+
+    @property
+    def initial_team(self):
+        """
+        Returns the initial team played for by the player, such as 'SAC' for Neemias Queta.
+        """
+        return self._initial_team
+    
+    @property
+    def weighted_career_av(self):
+        """
+        Returns the weighted career average value for the player, such as '9' for Greg Joseph.
+        """
+        return self._weighted_career_av
+
+    @property
+    def fantasy_pos_rk(self):
+        """
+        Returns the fantasy position rank for the player in the most recent season.
+        """
+        return self._fantasy_pos_rk
 
     @property
     def position(self):
@@ -1834,7 +1942,7 @@ class Roster:
         self._find_players_with_coach(year)
         if self._team and self._players:
             print(f"Writing updated {self._team} roster to local database...")
-            conn = sqlite3.connect('sportsipy/nfl/players.db')
+            conn = sqlite3.connect('sportsipy/nfl/players2.db')
             c = conn.cursor()
             # create table 'players' if it does not already exist
             c.execute('''
@@ -1848,16 +1956,17 @@ class Roster:
                       weight REAL,
                       position TEXT,
                       birth_date DATETIME,
-                      team_history TEXT
+                      team_history TEXT,
+                      initial_team TEXT
                       )''')
             # insert each player
             for player in self._players:
                 if player.team_history:
                     c.execute('''INSERT into players (sport, team, name, player_id, 
-                            height, weight, position, birth_date, team_history) 
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
+                            height, weight, position, birth_date, team_history, initial_team) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
                             ('NFL', player.team_abbreviation, player.name, player.player_id, player.height, player.weight, 
-                            player.position, player.birth_date, str(player.team_history)))
+                            player.position, player.birth_date, str(player.team_history), player.initial_team))
             # remove duplicate players
             c.execute('''DELETE FROM players WHERE id NOT IN 
                       (SELECT MAX(id) FROM players GROUP BY sport,name,player_id);''')
