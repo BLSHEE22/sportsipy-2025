@@ -238,11 +238,13 @@ def display_grudges(position_type, positions):
         except:
             print("None\n")
             continue
+        # sort players by grudge length, always putting primary grudges first
+        players_at_position = sorted([(p[0], p[1], p[2], p[3], p[4], p[5], (1000 if p[2] == p[4] else 0) + len(p[3])) for p in players_at_position], key=lambda x: x[6], reverse=True)
         for player_info in players_at_position:
-            name, curr_team, former_team, yrs_played, initial_team, fantasy_pos_rk = player_info
+            name, curr_team, former_team, yrs_played, initial_team, fantasy_pos_rk, grudge_type_no = player_info
             grudge_type = "grudge"
             if initial_team == former_team:
-                grudge_type = CYAN + "primary grudge"
+                grudge_type = "primary grudge"
             yrs_spent = len(yrs_played)
             yrs_spent_str = "season"
             if yrs_spent > 1:
@@ -252,7 +254,7 @@ def display_grudges(position_type, positions):
                 print(f"He spent {yrs_spent} {yrs_spent_str} with {former_team} {yrs_played}.")
             if position_type == "FANTASY":
                 if fantasy_pos_rk:
-                    if int(fantasy_pos_rk) < 20:
+                    if int(fantasy_pos_rk) <= 50:
                         fantasy_pos_rk = GOLD + fantasy_pos_rk
                     print(f"His position rank in fantasy this season is {fantasy_pos_rk}" + RESET + ".")
             print()
@@ -260,8 +262,6 @@ def display_grudges(position_type, positions):
 
 # START
 welcome()
-update_roster('NFL', 'CIN')
-update_roster('NFL', 'MIN')
 #update_all_rosters('NFL')
 sport = ask("sport", sports)
 week = ask("week", [str(i) for i in range(1, 19)])
@@ -275,14 +275,6 @@ display_grudges("UTILITY", utility_positions)
 
 #### NFL DEBUG
 ## TODO
-## - update all rosters (re: IND vs. CLT fix)
-## - define a player grudge against his/her original team as a 'primary grudge'. 
-##   - for this we need to collect the player's initial team and store in new column in DB
-## - collect yrs spent with grudged team
-##   - can sort by timespan spent with grudged team
-##   - e.g. Aaron Rodgers spent 18 seasons with GNB, 2 with NYJ (2023, 2024).
-## - if a player grudge is a starter, color the player name in bold/gold.
-## - scrape for player's fantasy pos rk and display as part of output (could sort by pos rk as well)
 # player1 = NFLPlayer('AddiTu00')
 # print(f"Name: {player1.name}")
 # print(f"Position: {player1.position}")
