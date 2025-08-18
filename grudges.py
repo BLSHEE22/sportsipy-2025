@@ -23,10 +23,15 @@ teams = {"NBA":["ATL", "BOS", "BRK", "CHI", "CHO", "CLE", "DAL", "DEN", "DET", "
                 "DET", "GNB", "HTX", "JAX", "KAN", "MIA", "MIN", "NOR", "NWE", "NYG",
                 "NYJ", "OTI", "PHI", "PIT", "RAI", "RAM", "RAV", "SDG", "SEA", "SFO", 
                 "TAM", "WAS"]}
-nfl_schedule = [[("DAL", "PHI"), ("KAN", "SDG"), ("TAM", "ATL"), ("CIN", "CLE"), ("MIA", "CLT"), # 1
-                 ("CAR", "JAX"), ("RAI", "NWE"), ("CRD", "NOR"), ("PIT", "NYJ"), ("NYG", "WAS"),
-                 ("OTI", "DEN"), ("SFO", "SEA"), ("DET", "GNB"), ("HTX", "RAM"), ("RAV", "BUF"),
-                 ("MIN", "CHI")],
+nfl_schedule = [{'thursday':[("8:20 PM", "DAL", "PHI")], 'friday':[("8:00 PM", "KAN", "SDG")], 
+                  'sunday':[("1:00 PM", "TAM", "ATL"), ("1:00 PM", "CIN", "CLE"), 
+                            ("1:00 PM", "MIA", "CLT"), ("1:00 PM", "CAR", "JAX"), 
+                            ("1:00 PM", "RAI", "NWE"), ("1:00 PM", "CRD", "NOR"), 
+                            ("1:00 PM", "PIT", "NYJ"), ("1:00 PM", "NYG", "WAS"),
+                            ("4:05 PM", "OTI", "DEN"), ("4:05 PM", "SFO", "SEA"), 
+                            ("4:25 PM", "DET", "GNB"), ("4:25 PM", "HTX", "RAM"), 
+                            ("8:20 PM", "RAV", "BUF")],
+                 'monday':[("8:15 PM", "MIN", "CHI")]}, # 1
                 [("WAS", "GNB"), ("CLE", "RAV"), ("JAX", "CIN"), ("NYG", "DAL"), ("CHI", "DET"), # 2
                  ("NWE", "MIA"), ("SFO", "NOR"), ("BUF", "NYJ"), ("SEA", "PIT"), ("RAM", "OTI"),
                  ("CAR", "CRD"), ("DEN", "CLT"), ("PHI", "KAN"), ("ATL", "MIN"), ("TAM", "HTX"),
@@ -94,6 +99,8 @@ position_translator = {"EDGE":"DE", "SAF":"S", "OT":"T", "FS":"S", "SS":"S", "OL
                        "ILB":"LB", "OG":"G", "Unknown":"Unknown", "NT":"DT", "RILB":"LB",
                        "MLB":"LB", "LT":"T", "LG":"G", "RG":"G", "RT":"T"}
 playersWithGrudges = {}
+grudgesByMatchup = {}
+final_positions = fantasy_positions + defensive_positions + offensive_line_positions + utility_positions
 
 def welcome():
     """
@@ -147,7 +154,7 @@ def update_all_rosters(sport):
     :type team: str
     """
     for team in teams[sport]:
-        update_roster(team)
+        update_roster(sport, team)
         print("Sleeping for 1 minute...")
         sleep(60)
 
@@ -162,121 +169,90 @@ def find_grudges(t1, t2):
     :type t1: str
     :param t2: Former team.
     :type t2: str
+    :returns: The list of player grudges from t1 against t2.
+    :rtype: list(dict)
     """
     #print(f"\nSeeking {t1} players who have previously played for {t2}...")
-    conn = sqlite3.connect('sportsipy/' + sport.lower() + '/players.db')
+    playersWithGrudges.clear()
+    conn = sqlite3.connect('sportsipy/' + sport.lower() + '/players2.db')
     c = conn.cursor()
     c.execute(f"""
-              SELECT name, position, team, team_history, initial_team, fantasy_pos_rk FROM players WHERE 
+              SELECT player_id, name, position, team, team_history, initial_team, fantasy_pos_rk, headshot_url FROM players2 WHERE 
               sport == '{sport}' AND team == '{t1}' AND instr(team_history, '{t2}') > 0""")
     rows = c.fetchall()
+    grudgeList = []
     for row in rows:
-        name, position, curr_team, team_history, initial_team, fantasy_pos_rk = row
+        playerId, name, position, curr_team, team_history, initial_team, fantasy_pos_rk, headshot_url = row
         years_played = ast.literal_eval(team_history)[t2]
+        # format headshot url
+        if not headshot_url:
+            headshot_url = 'None'
+        # format position
         position = position.strip()
-        if "-" in position:
-            pos_list = position.split("-")
-        else:
-            pos_list = [position]
-        for pos in pos_list:
-            all_pos = fantasy_positions + defensive_positions + \
-                offensive_line_positions + utility_positions
-            if pos not in all_pos:
-                pos = position_translator[pos]
+        # format grudge type
+        grudgeType = 'Grudge'
+        if t2 == initial_team:
+            grudgeType = 'Primary Grudge'
+        # format seasons
+        years_played_str = ", ".join(years_played)
+        # format pos rk
+        if fantasy_pos_rk == None:
+            fantasy_pos_rk = 'N/A'
+        # populate data object
+        grudgeDict = {'headshotUrl': headshot_url,
+                      'name': name,
+                      'position': position,
+                      'grudgeType': grudgeType,
+                      'seasons': years_played_str,
+                      'positionRk': fantasy_pos_rk
+                      }
+        grudgeList.append(grudgeDict)
+    return grudgeList
+
+def print_player_grudges_js():
+    """
+    Find all player grudges from a week's slate of matchups and print the complete data structure.
+    """
+    build_me = {}
+    for day, gameList in nfl_schedule[int(week)-1].items(): # week 1
+        for game in gameList:
+            time, awayTeam, homeTeam = game
+            awayGrudges = find_grudges(awayTeam, homeTeam)
+            homeGrudges = find_grudges(homeTeam, awayTeam)
+            team_name_map = {'SDG': 'LAC',
+                             'OTI': 'TEN',
+                             'NWE': 'NE'}
+            if awayTeam in team_name_map.keys():
+                awayTeam = team_name_map[awayTeam]
+            if homeTeam in team_name_map.keys():
+                homeTeam = team_name_map[homeTeam]
             try:
-                playersWithGrudges[pos].append((name, t1, t2, years_played, initial_team, fantasy_pos_rk))
+                build_me[day]
             except:
-                playersWithGrudges[pos] = []
-                playersWithGrudges[pos].append((name, t1, t2, years_played, initial_team, fantasy_pos_rk))
-
-def find_grudges_in_slate(week):
-    """
-    Finds grudges within an entire week's matchup slate.
-
-    :param week: The regular season week (e.g. 1-17).
-    :type week: str
-    """
-    print(f"\nFinding all grudge matches in the {sport} week {week} slate...\n")
-    slate = nfl_schedule[week-1]
-    for matchup in slate:
-        away_team, home_team = matchup
-        find_grudges(away_team, home_team)
-        find_grudges(home_team, away_team)
-
-def count_dst_grudges():
-    """
-    1. Count D/ST player grudges per team and sort by highest-to-lowest.
-
-    2. Add sublist of the top three entries to `playersWithGrudges` under 'D/ST'.
-    """
-    dst_grudges = {"D/ST":[]}
-    for pos in playersWithGrudges.keys():
-        if pos in defensive_positions:
-            for player in playersWithGrudges[pos]:
-                dst_grudges["D/ST"].append(player)
-    dsts = [(g[1], g[2]) for g in dst_grudges["D/ST"]]
-    dsts_temp = [(team[0], dsts.count(team), team[1], '', '', '') for team in set(dsts)]
-    dsts_sorted = sorted(dsts_temp, key=lambda x: x[1], reverse=True)[:3]
-    dst_grudges["D/ST"] = dsts_sorted
-    if dst_grudges["D/ST"]:
-        playersWithGrudges.update(dst_grudges)
-
-def display_grudges(position_type, positions):
-    """
-    Print out player grudges by position.
-
-    :param position_type: The print header for the output.
-    :type position_type: str
-    :param positions: The list of positions to print contents for.
-    :type positions: list
-    """
-    print(GREEN + position_type + RESET + "\n")
-    for pos in positions:
-        print(RED + f"{pos}" + RESET + "\n")
-        try:
-            players_at_position = playersWithGrudges[pos]
-        except:
-            print("None\n")
-            continue
-        # sort players by grudge length, always putting primary grudges first
-        players_at_position = sorted([(p[0], p[1], p[2], p[3], p[4], p[5], (1000 if p[2] == p[4] else 0) + len(p[3])) for p in players_at_position], key=lambda x: x[6], reverse=True)
-        for player_info in players_at_position:
-            name, curr_team, former_team, yrs_played, initial_team, fantasy_pos_rk, grudge_type_no = player_info
-            grudge_type = "grudge"
-            if initial_team == former_team:
-                grudge_type = "primary grudge"
-            yrs_spent = len(yrs_played)
-            yrs_spent_str = "season"
-            if yrs_spent > 1:
-                yrs_spent_str = "seasons"
-            print(BOLD + name + RESET + f" ({curr_team}) has a {grudge_type}" + RESET + f" against {former_team}.")
-            if pos != "D/ST":
-                print(f"He spent {yrs_spent} {yrs_spent_str} with {former_team} {yrs_played}.")
-            if position_type == "FANTASY":
-                if fantasy_pos_rk:
-                    if int(fantasy_pos_rk) <= 50:
-                        fantasy_pos_rk = GOLD + fantasy_pos_rk
-                    print(f"His position rank in fantasy this season is {fantasy_pos_rk}" + RESET + ".")
-            print()
-    print()
+                build_me[day] = []
+            build_me[day].append({'time': time,
+                                'awayTeam': awayTeam,
+                                'homeTeam': homeTeam,
+                                'awayGrudges': awayGrudges,
+                                'homeGrudges': homeGrudges})
+    print(build_me)
 
 # START
 welcome()
+update_roster('NFL', 'KAN')
+sleep(60)
+update_roster('NFL', 'SDG')
 #update_all_rosters('NFL')
 sport = ask("sport", sports)
 week = ask("week", [str(i) for i in range(1, 19)])
-find_grudges_in_slate(int(week))
-dst_grudges = count_dst_grudges()
-print("\n" + BOLD + "Players with Grudges:" + RESET + "\n")
-display_grudges("FANTASY", fantasy_positions)
-display_grudges("DEFENSE", defensive_positions)
-display_grudges("OFFENSIVE LINE", offensive_line_positions)
-display_grudges("UTILITY", utility_positions)
+print_player_grudges_js()
 
 #### NFL DEBUG
 ## TODO
-# player1 = NFLPlayer('AddiTu00')
+# player1 = NFLPlayer('PiniBr00')
 # print(f"Name: {player1.name}")
+# print(f"Player Id: {player1.player_id}")
+# print(f"Headshot URL: {player1.headshot_url}")
 # print(f"Position: {player1.position}")
 # print(f"Height: {player1.height}")
 # print(f"Weight: {player1.weight}")

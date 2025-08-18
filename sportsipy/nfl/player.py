@@ -200,6 +200,7 @@ class AbstractPlayer:
                short_field == 'initial_team' or \
                short_field == 'weighted_career_av' or \
                short_field == 'fantasy_pos_rk' or \
+               short_field == 'headshot_url' or \
                short_field == 'detailed_stats_seasons' or \
                short_field == 'detailed_stats_index':
                 continue

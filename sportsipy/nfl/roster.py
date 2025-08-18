@@ -124,6 +124,7 @@ class Player(AbstractPlayer):
         self._initial_team = None
         self._weighted_career_av = None
         self._fantasy_pos_rk = None
+        self._headshot_url = None
         self._position = None
         self._height = None
         self._weight = None
@@ -257,10 +258,12 @@ class Player(AbstractPlayer):
         self._safeties = None
 
         player_data = self._pull_player_data()
-        print(f"Pulled data for {self._name}! Sleeping for 3 seconds...")
         if not player_data:
+            print(f"Could not find player data for {player_id}. Sleeping for 3 seconds...")
+            sleep(3)
             return
         self._find_initial_index()
+        print(f"Pulled data for {self._name}! Sleeping for 3 seconds...")
         sleep(3)
         AbstractPlayer.__init__(self, player_id, self._name, player_data)
 
@@ -290,6 +293,8 @@ class Player(AbstractPlayer):
         """
         # The first letter of the player's last name is used to sort the player
         # list and is a part of the URL.
+        if not self._player_id:
+            return 'no_player_page'
         first_character = self._player_id[0]
         return PLAYER_URL % (first_character, self._player_id)
 
@@ -309,6 +314,8 @@ class Player(AbstractPlayer):
             the comment tags removed.
         """
         url = self._build_url()
+        if url == 'no_player_page':
+            return None
         try:
             url_data = pq(url)
         except (HTTPError, ParserError):
@@ -540,6 +547,9 @@ class Player(AbstractPlayer):
                     if any(char.isalpha() for char in result_list[0]):
                         result_list = result_list[1:]
                 value = result_list[field_map[short_field]]
+                if " " in value:
+                    print('Skipping ' + short_field + ' because illegal value \'' + value + '\' found.')
+                    continue
             setattr(self, field, value)
 
     def _parse_position(self, player_info):
@@ -618,6 +628,21 @@ class Player(AbstractPlayer):
             value = fantasy_pos_rk_field[-2]
         setattr(self, '_fantasy_pos_rk', value)
 
+    def _parse_headshot_url(self, player_info):
+        """
+        Parse the player's headshot photo URL.
+
+        Parameters
+        ----------
+        player_info : PyQuery object
+            A PyQuery object containing the HTML from the player's stats page.
+        """
+        value = None
+        headshot_field = [item.attr['src'] for item in player_info('#meta div[class="media-item"] img').items()]
+        if headshot_field:
+            value = headshot_field[0]
+        setattr(self, '_headshot_url', value)
+
     def _pull_player_data(self):
         """
         Pull and aggregate all player information.
@@ -645,6 +670,7 @@ class Player(AbstractPlayer):
         self._parse_team_history(player_info)
         self._parse_career_av(player_info)
         self._parse_fantasy_pos_rk(player_info)
+        self._parse_headshot_url(player_info)
         setattr(self, '_season', list(all_stats.keys()))
         return all_stats
 
@@ -939,6 +965,13 @@ class Player(AbstractPlayer):
         Returns the fantasy position rank for the player in the most recent season.
         """
         return self._fantasy_pos_rk
+
+    @property
+    def headshot_url(self):
+        """
+        Returns the URL for the player's headshot photo.
+        """
+        return self._headshot_url
 
     @property
     def position(self):
@@ -1928,11 +1961,11 @@ class Roster:
         self._find_players_with_coach(year)
         if self._team and self._players:
             print(f"Writing updated {self._team} roster to local database...")
-            conn = sqlite3.connect('sportsipy/nfl/players.db')
+            conn = sqlite3.connect('sportsipy/nfl/players2.db')
             c = conn.cursor()
             # create table 'players' if it does not already exist
             c.execute('''
-                      CREATE TABLE IF NOT EXISTS players (
+                      CREATE TABLE IF NOT EXISTS players2 (
                       id INTEGER PRIMARY KEY,
                       sport TEXT,
                       team TEXT,
@@ -1944,19 +1977,20 @@ class Roster:
                       birth_date DATETIME,
                       team_history TEXT,
                       initial_team TEXT,
-                      fantasy_pos_rk TEXT
+                      fantasy_pos_rk TEXT,
+                      headshot_url TEXT
                       )''')
             # insert each player
             for player in self._players:
                 if player.team_history:
-                    c.execute('''INSERT into players (sport, team, name, player_id, 
-                            height, weight, position, birth_date, team_history, initial_team, fantasy_pos_rk) 
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
+                    c.execute('''INSERT into players2 (sport, team, name, player_id, 
+                            height, weight, position, birth_date, team_history, initial_team, fantasy_pos_rk, headshot_url) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
                             ('NFL', player.team_abbreviation, player.name, player.player_id, player.height, player.weight, 
-                            player.position, player.birth_date, str(player.team_history), player.initial_team, player.fantasy_pos_rk))
+                            player.position, player.birth_date, str(player.team_history), player.initial_team, player.fantasy_pos_rk, player.headshot_url))
             # remove duplicate players
-            c.execute('''DELETE FROM players WHERE id NOT IN 
-                      (SELECT MAX(id) FROM players GROUP BY sport,name,player_id);''')
+            c.execute('''DELETE FROM players2 WHERE id NOT IN 
+                      (SELECT MAX(id) FROM players2 GROUP BY sport,name,player_id);''')
             # commit changes and close connection
             conn.commit()
             conn.close()
