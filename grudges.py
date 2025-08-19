@@ -239,9 +239,12 @@ def display_grudges(position_type, positions):
             print("None\n")
             continue
         # sort players by grudge length, always putting primary grudges first
-        players_at_position = sorted([(p[0], p[1], p[2], p[3], p[4], p[5], (1000 if p[2] == p[4] else 0) + len(p[3])) for p in players_at_position], key=lambda x: x[6], reverse=True)
+        players_at_position = sorted([(p[0], p[1], p[2], p[3], p[4], (1000 if not p[5] else int(p[5])), (1000 if p[2] == p[4] else 0) + len(p[3])) for p in players_at_position], key=lambda x: x[5])
         for player_info in players_at_position:
             name, curr_team, former_team, yrs_played, initial_team, fantasy_pos_rk, grudge_type_no = player_info
+            if fantasy_pos_rk > 50:
+                if pos != "D/ST":
+                    continue
             grudge_type = "grudge"
             if initial_team == former_team:
                 grudge_type = "primary grudge"
@@ -254,8 +257,8 @@ def display_grudges(position_type, positions):
                 print(f"He spent {yrs_spent} {yrs_spent_str} with {former_team} {yrs_played}.")
             if position_type == "FANTASY":
                 if fantasy_pos_rk:
-                    if int(fantasy_pos_rk) <= 50:
-                        fantasy_pos_rk = GOLD + fantasy_pos_rk
+                    if fantasy_pos_rk <= 50:
+                        fantasy_pos_rk = GOLD + str(fantasy_pos_rk)
                     print(f"His position rank in fantasy this season is {fantasy_pos_rk}" + RESET + ".")
             print()
     print()
