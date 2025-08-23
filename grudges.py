@@ -23,15 +23,15 @@ teams = {"NBA":["ATL", "BOS", "BRK", "CHI", "CHO", "CLE", "DAL", "DEN", "DET", "
                 "DET", "GNB", "HTX", "JAX", "KAN", "MIA", "MIN", "NOR", "NWE", "NYG",
                 "NYJ", "OTI", "PHI", "PIT", "RAI", "RAM", "RAV", "SDG", "SEA", "SFO", 
                 "TAM", "WAS"]}
-nfl_schedule = [{'thursday':[("8:20 PM", "DAL", "PHI")], 'friday':[("8:00 PM", "KAN", "SDG")], 
-                  'sunday':[("1:00 PM", "TAM", "ATL"), ("1:00 PM", "CIN", "CLE"), 
+nfl_schedule = [{'Thursday, September 4th':[("8:20 PM", "DAL", "PHI")], 'Friday, September 5th':[("8:00 PM", "KAN", "SDG")], 
+                 'Sunday, September 7th':[("1:00 PM", "TAM", "ATL"), ("1:00 PM", "CIN", "CLE"), 
                             ("1:00 PM", "MIA", "CLT"), ("1:00 PM", "CAR", "JAX"), 
                             ("1:00 PM", "RAI", "NWE"), ("1:00 PM", "CRD", "NOR"), 
                             ("1:00 PM", "PIT", "NYJ"), ("1:00 PM", "NYG", "WAS"),
                             ("4:05 PM", "OTI", "DEN"), ("4:05 PM", "SFO", "SEA"), 
                             ("4:25 PM", "DET", "GNB"), ("4:25 PM", "HTX", "RAM"), 
                             ("8:20 PM", "RAV", "BUF")],
-                 'monday':[("8:15 PM", "MIN", "CHI")]}, # 1
+                 'Monday, September 8th':[("8:15 PM", "MIN", "CHI")]}, # 1
                 [("WAS", "GNB"), ("CLE", "RAV"), ("JAX", "CIN"), ("NYG", "DAL"), ("CHI", "DET"), # 2
                  ("NWE", "MIA"), ("SFO", "NOR"), ("BUF", "NYJ"), ("SEA", "PIT"), ("RAM", "OTI"),
                  ("CAR", "CRD"), ("DEN", "CLT"), ("PHI", "KAN"), ("ATL", "MIN"), ("TAM", "HTX"),
@@ -101,6 +101,29 @@ position_translator = {"EDGE":"DE", "SAF":"S", "OT":"T", "FS":"S", "SS":"S", "OL
 playersWithGrudges = {}
 grudgesByMatchup = {}
 final_positions = fantasy_positions + defensive_positions + offensive_line_positions + utility_positions
+position_order = {"QB": 0, # fantasy
+                  "RB": 1,
+                  "WR": 2,
+                  "TE": 3,
+                  "K": 4,
+                  "DE": 5, # defense
+                  "DT": 6,
+                  "DL": 7,
+                  "OLB": 8,
+                  "ILB": 9,
+                  "LB": 10,
+                  "CB": 11,
+                  "FS": 12,
+                  "SS": 13,
+                  "S": 14,
+                  "DB": 15,
+                  "C": 16, # offensive line
+                  "T": 17,
+                  "G": 18,
+                  "OL": 19,
+                  "LS": 20, # utility
+                  "P": 21,
+                  "Unknown": 1000}
 
 def welcome():
     """
@@ -207,7 +230,11 @@ def find_grudges(t1, t2):
                       'positionRk': fantasy_pos_rk
                       }
         grudgeList.append(grudgeDict)
-    return grudgeList
+    if len(grudgeList) > 1:
+        grudgeListSorted = sorted(grudgeList, key=lambda x: position_order[x['position']])
+        return grudgeListSorted
+    else:
+        return grudgeList
 
 def print_player_grudges_js():
     """
@@ -231,10 +258,10 @@ def print_player_grudges_js():
             except:
                 build_me[day] = []
             build_me[day].append({'time': time,
-                                'awayTeam': awayTeam,
-                                'homeTeam': homeTeam,
-                                'awayGrudges': awayGrudges,
-                                'homeGrudges': homeGrudges})
+                                  'awayTeam': awayTeam,
+                                  'homeTeam': homeTeam,
+                                  'awayGrudges': awayGrudges,
+                                  'homeGrudges': homeGrudges})
     print(build_me)
 
 # START
@@ -242,7 +269,7 @@ welcome()
 #update_roster('NFL', 'KAN')
 #sleep(60)
 #update_roster('NFL', 'SDG')
-update_all_rosters('NFL')
+#update_all_rosters('NFL')
 sport = ask("sport", sports)
 week = ask("week", [str(i) for i in range(1, 19)])
 print_player_grudges_js()
